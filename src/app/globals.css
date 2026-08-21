@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #000000;
+  --color-primary-foreground: #ffffff;
+  --color-muted: #f4f4f5;
+  --color-muted-foreground: #71717a;
+  --color-border: #e4e4e7;
+  --color-background: #ffffff;
+  --color-foreground: #09090b;
+  --color-card: #ffffff;
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #09090b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #09090b;
+    --foreground: #fafafa;
+  }
+  @theme {
+    --color-primary: #ffffff;
+    --color-primary-foreground: #000000;
+    --color-muted: #27272a;
+    --color-muted-foreground: #a1a1aa;
+    --color-border: #27272a;
+    --color-background: #09090b;
+    --color-foreground: #fafafa;
+    --color-card: #09090b;
+  }
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+}
+
+/* Clean UI utility replacing glassmorphism */
+.clean-panel {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
