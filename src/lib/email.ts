@@ -1,25 +1,29 @@
 import nodemailer from 'nodemailer';
 
+// Clean and sanitize environment variables to prevent BadCredentials due to quotes or spaces
+const gmailUser = (process.env.GMAIL_USER || '').trim().replace(/^["']|["']$/g, '');
+const gmailPass = (process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, '').replace(/^["']|["']$/g, '');
+
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 465,
   secure: true,
   auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
+    user: gmailUser,
+    pass: gmailPass,
   },
 });
 
 export async function sendEmail({ to, bcc, subject, html }: { to?: string, bcc?: string, subject: string, html: string }) {
-  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+  if (!gmailUser || !gmailPass) {
     console.warn("GMAIL_USER or GMAIL_APP_PASSWORD not set. Email not sent.");
     return { success: false, error: "Email credentials not configured." };
   }
 
   try {
     const info = await transporter.sendMail({
-      from: `"Code with Abanoub LMS" <${process.env.GMAIL_USER}>`,
-      to: to || process.env.GMAIL_USER,
+      from: `"Code with Abanoub LMS" <${gmailUser}>`,
+      to: to || gmailUser,
       bcc,
       subject,
       html,
@@ -27,7 +31,7 @@ export async function sendEmail({ to, bcc, subject, html }: { to?: string, bcc?:
     console.log("Message sent: %s", info.messageId);
     return { success: true, messageId: info.messageId };
   } catch (error: any) {
-    console.error("Error sending email:", error);
+    console.error("Error sending email via Nodemailer:", error);
     return { success: false, error: error.message };
   }
 }
