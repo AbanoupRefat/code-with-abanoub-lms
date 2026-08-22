@@ -141,7 +141,8 @@ export async function toggleEnrollment(formData: FormData) {
   if (error) return { success: false, message: error.message };
   
   // Grant/Revoke Google Drive access if configured
-  const driveFolderId = enrollment?.courses?.drive_folder_id;
+  const courseData = enrollment?.courses as any;
+  const driveFolderId = Array.isArray(courseData) ? courseData[0]?.drive_folder_id : courseData?.drive_folder_id;
   const studentEmail = studentProfile?.email;
   const studentName = studentProfile?.full_name || studentEmail || 'Student';
   
