@@ -74,7 +74,7 @@ Example output:
       const payload = {
         ...addForm,
         event_type: addForm.event_type as any,
-        meeting_url: addForm.event_type === 'live_session' ? 'room_' + Date.now() + Math.random().toString(36).substring(7) : undefined,
+        meeting_url: addForm.event_type === 'live_session' ? 'room_' + Date.now() + Math.random().toString(36).substring(7) : "",
       };
       await createCalendarEvent(payload);
       setAddForm({
