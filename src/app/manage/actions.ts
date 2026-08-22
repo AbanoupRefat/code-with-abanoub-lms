@@ -676,6 +676,7 @@ export async function createCalendarEvent(data: {
   }
 
   // Notify students
+  let emailStatus = "No students found to notify.";
   try {
     const { data: students } = await supabase.from('profiles').select('email').eq('role', 'student');
     if (students && students.length > 0) {
@@ -683,20 +684,27 @@ export async function createCalendarEvent(data: {
       if (bccEmails) {
         const { subject, html } = buildEventEmailTemplate(data);
         
-        await sendEmail({
+        const emailRes = await sendEmail({
           bcc: bccEmails,
           subject,
           html,
         });
+
+        if (emailRes.success) {
+          emailStatus = `Email sent successfully to ${students.length} student(s)!`;
+        } else {
+          emailStatus = `Email failed: ${emailRes.error}`;
+        }
       }
     }
-  } catch (emailErr) {
+  } catch (emailErr: any) {
     console.error("Failed to send calendar notifications:", emailErr);
+    emailStatus = `Email failed: ${emailErr.message}`;
   }
   
   revalidatePath('/manage/calendar');
   revalidatePath('/calendar');
-  return { success: true };
+  return { success: true, emailStatus };
 }
 
 export async function deleteCalendarEvent(id: string) {

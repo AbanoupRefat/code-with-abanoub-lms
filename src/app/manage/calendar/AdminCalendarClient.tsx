@@ -81,6 +81,7 @@ Example output:
       if (res && !res.success) {
         alert("Error: " + res.error);
       } else {
+        alert("Event Created!\n" + (res?.emailStatus || ""));
         setAddForm({
           title: "", description: "", event_type: "lecture", event_date: "", course_id: "", quiz_id: ""
         });
@@ -108,9 +109,8 @@ Example output:
       });
 
       if (res && res.success) {
-        // Fetch created event ID or redirect to the most recent live event
         router.refresh();
-        alert("Instant Live Session started! Email notifications sent to all students.");
+        alert("Instant Live Session started!\n" + (res?.emailStatus || ""));
       } else {
         alert("Error starting session: " + (res?.error || "Unknown error"));
       }
