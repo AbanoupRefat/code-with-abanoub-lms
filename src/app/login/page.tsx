@@ -39,10 +39,10 @@ export default function LoginPage() {
           Login to your account
         </h1>
         
-        <div className="bg-card border border-border px-8 py-10 rounded-xl shadow-sm w-full">
+        <div className="bg-card border border-border px-6 py-8 sm:px-8 sm:py-10 rounded-xl shadow-sm w-full">
           
           <div className="flex justify-center mb-10">
-            <Link href="/" className="relative w-48 h-48 rounded-xl overflow-hidden shadow-lg border border-border/50 hover:scale-105 transition-transform duration-300">
+            <Link href="/" className="relative w-40 h-40 sm:w-48 sm:h-48 rounded-xl overflow-hidden shadow-lg border border-border/50 hover:scale-105 transition-transform duration-300">
               <Image src="/logo.jpg" alt="Code With Abanoub Logo" fill className="object-cover" priority />
             </Link>
           </div>
