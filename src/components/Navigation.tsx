@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, Home, Library, User, LogOut } from "lucide-react";
+import { BookOpen, Home, Library, User, LogOut, Code2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useLang, LangToggle } from "@/components/LangContext";
 
@@ -14,6 +14,7 @@ export default function Navigation({ profile }: { profile: any }) {
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
     { name: "My Courses", href: "/courses", icon: Library },
+    { name: "Playground", href: "/playground", icon: Code2 },
     { name: "Profile", href: "/profile", icon: User },
   ];
 

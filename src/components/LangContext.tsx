@@ -133,6 +133,22 @@ const translations: Record<string, Record<Lang, string>> = {
   "students.hoursAgo": { en: "h ago", ar: "س مضت" },
   "students.daysAgo": { en: "d ago", ar: "ي مضت" },
   "students.never": { en: "Never", ar: "لم يسجل دخول" },
+
+  // Playground
+  "playground.title": { en: "Code Playground", ar: "ساحة البرمجة" },
+  "playground.subtitle": { en: "Write and run Python or JavaScript directly in your browser.", ar: "اكتب وشغّل كودًا بلغة Python أو JavaScript مباشرةً في متصفحك." },
+  "playground.run": { en: "Run Code", ar: "تشغيل الكود" },
+  "playground.running": { en: "Running...", ar: "جاري التشغيل..." },
+  "playground.clear": { en: "Clear", ar: "مسح" },
+  "playground.reset": { en: "Reset", ar: "إعادة ضبط" },
+  "playground.output": { en: "Output", ar: "الناتج" },
+  "playground.noOutput": { en: "Output will appear here after you run the code.", ar: "سيظهر الناتج هنا بعد تشغيل الكود." },
+  "playground.loading": { en: "Loading Python runtime...", ar: "جاري تحميل بيئة Python..." },
+  "playground.timeout": { en: "Execution timed out (5s limit). Check for infinite loops.", ar: "انتهت مهلة التنفيذ (5 ثوانٍ). تحقق من وجود حلقات لا نهاية لها." },
+  "playground.language": { en: "Language", ar: "اللغة" },
+  "playground.copyCode": { en: "Copy Code", ar: "نسخ الكود" },
+  "playground.copied": { en: "Copied!", ar: "تم النسخ!" },
+  "nav.playground": { en: "Playground", ar: "ساحة البرمجة" },
 };
 
 const LangContext = createContext<LangContextType>({
