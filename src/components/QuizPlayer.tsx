@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useTransition } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
-  Clock, CheckCircle2, AlertTriangle, Send, Loader2,
-  HelpCircle, PenLine, Save, ChevronRight, AlertCircle,
-  BookOpen, Info, Eye, EyeOff,
+  CheckCircle2, AlertTriangle, Send, Loader2,
+  PenLine, Save, EyeOff, Info, AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { saveQuizAnswer, submitQuiz } from "@/app/manage/actions";
@@ -24,6 +23,10 @@ interface Quiz {
 interface ExistingAnswer {
   question_id: string; selected_option_id: string | null; text_answer: string | null;
 }
+interface InitialScore {
+  mcqScore: number; finalScore: number | null;
+  totalMcqPoints: number; totalPoints: number; hasWrittenQuestions: boolean;
+}
 interface Props {
   quiz: Quiz;
   questions: QuizQuestion[];
@@ -31,38 +34,246 @@ interface Props {
   startedAt: string;
   existingAnswers: ExistingAnswer[];
   showGradeImmediately: boolean;
+  initialStatus?: "in_progress" | "submitted" | "graded";
+  initialScore?: InitialScore;
 }
 
+// ── Circular Timer FAB ────────────────────────────────────────────────────────
+function CircularTimerFAB({
+  secondsLeft,
+  totalSeconds,
+  state,
+}: {
+  secondsLeft: number;
+  totalSeconds: number;
+  state: "normal" | "warning" | "critical";
+}) {
+  const size = 72;
+  const strokeWidth = 5;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const progress = Math.max(0, Math.min(1, secondsLeft / totalSeconds));
+  const dashOffset = circumference * (1 - progress);
+
+  const m = Math.floor(secondsLeft / 60);
+  const s = secondsLeft % 60;
+  const timeStr = `${m}:${s.toString().padStart(2, "0")}`;
+
+  const trackColor =
+    state === "critical" ? "#fca5a5"  // red-300
+    : state === "warning" ? "#fcd34d"  // amber-300
+    : "hsl(var(--muted))";
+
+  const fillColor =
+    state === "critical" ? "#ef4444"   // red-500
+    : state === "warning" ? "#f59e0b"  // amber-500
+    : "hsl(var(--primary))";
+
+  const textColor =
+    state === "critical" ? "text-red-500"
+    : state === "warning" ? "text-amber-500"
+    : "text-foreground";
+
+  return (
+    <div
+      className={`fixed bottom-6 right-6 z-50 drop-shadow-xl transition-transform duration-200 ${
+        state === "critical" ? "animate-bounce" : state === "warning" ? "scale-105" : ""
+      }`}
+    >
+      <div
+        className={`relative flex items-center justify-center rounded-full bg-card border-2 transition-colors duration-500 ${
+          state === "critical" ? "border-red-500/40"
+          : state === "warning" ? "border-amber-500/30"
+          : "border-border"
+        }`}
+        style={{ width: size + 8, height: size + 8 }}
+      >
+        {/* SVG circle progress */}
+        <svg
+          width={size}
+          height={size}
+          viewBox={`0 0 ${size} ${size}`}
+          className="absolute -rotate-90"
+        >
+          {/* Background track */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={trackColor}
+            strokeWidth={strokeWidth}
+            opacity={0.3}
+          />
+          {/* Progress arc */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={fillColor}
+            strokeWidth={strokeWidth}
+            strokeDasharray={circumference}
+            strokeDashoffset={dashOffset}
+            strokeLinecap="round"
+            style={{ transition: "stroke-dashoffset 1s linear, stroke 0.5s ease" }}
+          />
+        </svg>
+
+        {/* Time label */}
+        <div className="relative flex flex-col items-center leading-none">
+          <span className={`text-sm font-bold font-mono tabular-nums ${textColor}`}>
+            {timeStr}
+          </span>
+          {state === "warning" && (
+            <AlertTriangle className="w-3 h-3 text-amber-500 mt-0.5" />
+          )}
+          {state === "critical" && (
+            <AlertCircle className="w-3 h-3 text-red-500 mt-0.5 animate-pulse" />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Results Screen ────────────────────────────────────────────────────────────
+function ResultsScreen({
+  timedOut,
+  mcqScore,
+  totalMcqPoints,
+  finalScore,
+  hasWrittenQuestions,
+  showGradeImmediately,
+  onBack,
+  t,
+}: {
+  timedOut: boolean;
+  mcqScore: number;
+  totalMcqPoints: number;
+  finalScore: number | null;
+  hasWrittenQuestions: boolean;
+  showGradeImmediately: boolean;
+  onBack: () => void;
+  t: (k: string) => string;
+}) {
+  const displayScore = finalScore ?? mcqScore;
+  const displayTotal = totalMcqPoints;
+  const pct = displayTotal > 0 ? Math.round((displayScore / displayTotal) * 100) : 0;
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 py-12">
+      <div className="max-w-md w-full">
+        <div className="w-20 h-20 rounded-full bg-green-500/10 border-2 border-green-500/30 flex items-center justify-center mx-auto mb-6 animate-in zoom-in duration-500">
+          <CheckCircle2 className="w-10 h-10 text-green-500" />
+        </div>
+        <h2 className="text-3xl font-bold text-foreground mb-2 flex items-center justify-center gap-2">
+          {timedOut
+            ? <><AlertCircle className="w-7 h-7 text-amber-500" /> {t("player.timesUp")}</>
+            : <><CheckCircle2 className="w-7 h-7 text-green-500" /> {t("player.submitted")}</>
+          }
+        </h2>
+        <p className="text-muted-foreground mb-8">
+          {timedOut ? t("player.autoSubmitted") : t("player.greatJob")}
+        </p>
+
+        {showGradeImmediately ? (
+          <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+            <div className="flex justify-between items-center pb-4 border-b border-border">
+              <span className="text-muted-foreground">{t("player.mcqScore")}</span>
+              <span className="font-bold text-foreground">{mcqScore} / {totalMcqPoints}</span>
+            </div>
+            {hasWrittenQuestions && (
+              <div className="flex items-start gap-3 text-sm text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-md p-3">
+                <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span>{t("player.writtenPending")}</span>
+              </div>
+            )}
+            {!hasWrittenQuestions && (
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground font-medium">{t("player.finalScore")}</span>
+                <div className="text-right">
+                  <span className={`text-2xl font-bold ${pct >= 60 ? "text-green-600" : "text-amber-600"}`}>
+                    {displayScore} / {displayTotal}
+                  </span>
+                  <p className="text-sm text-muted-foreground">{pct}%</p>
+                  <div className="w-32 h-2 bg-muted rounded-full mt-1 ms-auto">
+                    <div
+                      className={`h-full rounded-full ${pct >= 60 ? "bg-green-500" : "bg-amber-500"}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="bg-card border border-border rounded-xl p-6 flex items-start gap-3 text-muted-foreground">
+            <EyeOff className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <span>{hasWrittenQuestions ? t("player.writtenHidden") : t("player.resultsHidden")}</span>
+          </div>
+        )}
+
+        <button
+          onClick={onBack}
+          className="mt-6 px-6 py-3 bg-primary text-primary-foreground rounded-md font-medium hover:opacity-90 transition-opacity"
+        >
+          {t("player.backToCourse")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Quiz Player ───────────────────────────────────────────────────────────────
 export default function QuizPlayer({
-  quiz, questions, submissionId, startedAt, existingAnswers, showGradeImmediately,
+  quiz, questions, submissionId, startedAt, existingAnswers,
+  showGradeImmediately, initialStatus, initialScore,
 }: Props) {
   const router = useRouter();
-  const { t, dir } = useLang();
+  const { t } = useLang();
+
+  // If already finished, show results immediately
+  const isAlreadyDone = initialStatus === "submitted" || initialStatus === "graded";
 
   const [answers, setAnswers] = useState<Record<string, { optionId?: string; text?: string }>>(() => {
     const init: Record<string, { optionId?: string; text?: string }> = {};
     existingAnswers.forEach((a) => {
-      init[a.question_id] = { optionId: a.selected_option_id || undefined, text: a.text_answer || undefined };
+      init[a.question_id] = {
+        optionId: a.selected_option_id || undefined,
+        text: a.text_answer || undefined,
+      };
     });
     return init;
   });
 
-  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const totalSeconds = quiz.time_limit_minutes ? quiz.time_limit_minutes * 60 : 0;
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(() => {
+    if (!quiz.time_limit_minutes || isAlreadyDone) return null;
+    const elapsed = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
+    return Math.max(0, quiz.time_limit_minutes * 60 - elapsed);
+  });
+
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [submissionResult, setSubmissionResult] = useState<any>(null);
-  const [, startTransition] = useTransition();
+  const [submitted, setSubmitted] = useState(isAlreadyDone);
+  const [submissionResult, setSubmissionResult] = useState<{
+    timedOut: boolean; mcqScore: number; totalMcqPoints: number;
+    finalScore: number | null; hasWrittenQuestions: boolean;
+  } | null>(
+    isAlreadyDone && initialScore
+      ? {
+          timedOut: false,
+          mcqScore: initialScore.mcqScore,
+          totalMcqPoints: initialScore.totalMcqPoints,
+          finalScore: initialScore.finalScore,
+          hasWrittenQuestions: initialScore.hasWrittenQuestions,
+        }
+      : null
+  );
+
   const saveTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
   const timerInterval = useRef<NodeJS.Timeout | null>(null);
   const hasAutoSubmitted = useRef(false);
-
-  // Init timer
-  useEffect(() => {
-    if (!quiz.time_limit_minutes) return;
-    const elapsed = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
-    const totalSeconds = quiz.time_limit_minutes * 60;
-    setSecondsLeft(Math.max(0, totalSeconds - elapsed));
-  }, [quiz.time_limit_minutes, startedAt]);
 
   // Countdown
   useEffect(() => {
@@ -74,15 +285,20 @@ export default function QuizPlayer({
       }
       return;
     }
-    timerInterval.current = setTimeout(() => setSecondsLeft((s) => (s !== null ? s - 1 : null)), 1000);
+    timerInterval.current = setTimeout(
+      () => setSecondsLeft((s) => (s !== null ? s - 1 : null)),
+      1000
+    );
     return () => { if (timerInterval.current) clearTimeout(timerInterval.current); };
   }, [secondsLeft]);
 
   // Anti-copy protection
   useEffect(() => {
+    if (isAlreadyDone || submitted) return;
     const prevent = (e: Event) => e.preventDefault();
     const preventKeyboard = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && ["c", "a", "u", "s"].includes(e.key.toLowerCase())) e.preventDefault();
+      if ((e.ctrlKey || e.metaKey) && ["c", "a", "u", "s"].includes(e.key.toLowerCase()))
+        e.preventDefault();
     };
     document.addEventListener("copy", prevent);
     document.addEventListener("contextmenu", prevent);
@@ -92,13 +308,15 @@ export default function QuizPlayer({
       document.removeEventListener("contextmenu", prevent);
       document.removeEventListener("keydown", preventKeyboard);
     };
-  }, []);
+  }, [isAlreadyDone, submitted]);
 
   const autoSave = useCallback(
     (questionId: string, optionId?: string, text?: string) => {
       if (saveTimeouts.current[questionId]) clearTimeout(saveTimeouts.current[questionId]);
       saveTimeouts.current[questionId] = setTimeout(async () => {
-        try { await saveQuizAnswer(submissionId, questionId, optionId || null, text || null); } catch { }
+        try {
+          await saveQuizAnswer(submissionId, questionId, optionId || null, text || null);
+        } catch { }
       }, 800);
     },
     [submissionId]
@@ -115,7 +333,7 @@ export default function QuizPlayer({
   };
 
   const handleSubmit = async (timedOut = false) => {
-    if (isSubmitting) return;
+    if (isSubmitting || submitted) return;
     setIsSubmitting(true);
     Object.values(saveTimeouts.current).forEach((t) => clearTimeout(t));
     for (const [qId, ans] of Object.entries(answers)) {
@@ -123,7 +341,13 @@ export default function QuizPlayer({
     }
     try {
       const result = await submitQuiz(submissionId, quiz.id, timedOut);
-      setSubmissionResult(result);
+      setSubmissionResult({
+        timedOut,
+        mcqScore: result.mcqScore,
+        totalMcqPoints: result.totalMcqPoints,
+        finalScore: result.hasWrittenQuestions ? null : result.mcqScore,
+        hasWrittenQuestions: result.hasWrittenQuestions,
+      });
       setSubmitted(true);
       if (timerInterval.current) clearTimeout(timerInterval.current);
     } catch (e: any) {
@@ -132,135 +356,66 @@ export default function QuizPlayer({
     }
   };
 
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  };
-
-  const answeredCount = Object.values(answers).filter((a) => a.optionId || (a.text && a.text.trim())).length;
   const timerState: "normal" | "warning" | "critical" =
-    secondsLeft === null ? "normal" : secondsLeft <= 10 ? "critical" : secondsLeft <= 60 ? "warning" : "normal";
+    secondsLeft === null ? "normal"
+    : secondsLeft <= 10 ? "critical"
+    : secondsLeft <= 60 ? "warning"
+    : "normal";
 
-  // --- RESULTS SCREEN ---
+  const answeredCount = Object.values(answers).filter(
+    (a) => a.optionId || (a.text && a.text.trim())
+  ).length;
+
+  // ── Results ────────────────────────────────────────────────────────────────
   if (submitted && submissionResult) {
-    const hasWritten = submissionResult.hasWrittenQuestions;
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-        <div className="max-w-md w-full">
-          <div className="w-20 h-20 rounded-full bg-green-500/10 border-2 border-green-500/30 flex items-center justify-center mx-auto mb-6 animate-in zoom-in duration-500">
-            <CheckCircle2 className="w-10 h-10 text-green-500" />
-          </div>
-          <h2 className="text-3xl font-bold text-foreground mb-2">
-            {submissionResult.timedOut ? (
-              <span className="flex items-center justify-center gap-2"><Clock className="w-7 h-7 text-amber-500" /> {t("player.timesUp")}</span>
-            ) : (
-              <span className="flex items-center justify-center gap-2"><CheckCircle2 className="w-7 h-7 text-green-500" /> {t("player.submitted")}</span>
-            )}
-          </h2>
-          <p className="text-muted-foreground mb-8">
-            {submissionResult.timedOut ? t("player.autoSubmitted") : t("player.greatJob")}
-          </p>
-
-          {showGradeImmediately ? (
-            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-              <div className="flex justify-between items-center pb-4 border-b border-border">
-                <span className="text-muted-foreground">{t("player.mcqScore")}</span>
-                <span className="font-bold text-foreground">{submissionResult.mcqScore} / {submissionResult.totalMcqPoints}</span>
-              </div>
-              {hasWritten && (
-                <div className="flex items-start gap-3 text-sm text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-md p-3">
-                  <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                  <span>{t("player.writtenPending")}</span>
-                </div>
-              )}
-              {!hasWritten && (
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground font-medium">{t("player.finalScore")}</span>
-                  <span className={`text-2xl font-bold ${(submissionResult.mcqScore / submissionResult.totalMcqPoints) >= 0.6 ? "text-green-600" : "text-amber-600"}`}>
-                    {submissionResult.mcqScore} / {submissionResult.totalMcqPoints}
-                    <span className="text-base text-muted-foreground ms-1">
-                      ({Math.round((submissionResult.mcqScore / submissionResult.totalMcqPoints) * 100)}%)
-                    </span>
-                  </span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="bg-card border border-border rounded-xl p-6 flex items-start gap-3 text-muted-foreground">
-              <EyeOff className="w-5 h-5 flex-shrink-0 mt-0.5" />
-              <span>{hasWritten ? t("player.writtenHidden") : t("player.resultsHidden")}</span>
-            </div>
-          )}
-
-          <button
-            onClick={() => router.back()}
-            className="mt-6 px-6 py-3 bg-primary text-primary-foreground rounded-md font-medium hover:opacity-90 transition-opacity"
-          >
-            {t("player.backToCourse")}
-          </button>
-        </div>
-      </div>
+      <ResultsScreen
+        timedOut={submissionResult.timedOut}
+        mcqScore={submissionResult.mcqScore}
+        totalMcqPoints={submissionResult.totalMcqPoints}
+        finalScore={submissionResult.finalScore}
+        hasWrittenQuestions={submissionResult.hasWrittenQuestions}
+        showGradeImmediately={showGradeImmediately}
+        onBack={() => router.back()}
+        t={t}
+      />
     );
   }
 
-  // --- QUIZ PLAYER ---
+  // ── Quiz Form ───────────────────────────────────────────────────────────────
   return (
-    <div className="select-none" style={{ userSelect: "none", WebkitUserSelect: "none" }}>
-      {/* Sticky timer header */}
-      {secondsLeft !== null && (
-        <div className={`sticky top-0 z-20 flex items-center justify-between px-6 py-3 border-b transition-all duration-700 ${
-          timerState === "critical" ? "bg-red-500/10 border-red-500/20"
-          : timerState === "warning" ? "bg-amber-500/10 border-amber-500/20"
-          : "bg-card border-border"
-        }`}>
-          <div className={`flex items-center gap-2 font-mono font-bold text-xl transition-all duration-300 ${
-            timerState === "critical" ? "text-red-500 animate-pulse scale-110"
-            : timerState === "warning" ? "text-amber-500 animate-pulse"
-            : "text-foreground"
-          }`}>
-            <Clock className={`w-5 h-5 ${
-              timerState === "critical" ? "text-red-500"
-              : timerState === "warning" ? "text-amber-500"
-              : "text-muted-foreground"
-            }`} />
-            {formatTime(secondsLeft)}
-          </div>
-          <span className="text-sm text-muted-foreground">
-            {answeredCount} / {questions.length} {t("player.answered")}
-          </span>
-          {timerState === "warning" && (
-            <span className="flex items-center gap-1 text-xs text-amber-600 font-medium animate-pulse">
-              <AlertTriangle className="w-3.5 h-3.5" /> {t("player.lastMinute")}
-            </span>
-          )}
-          {timerState === "critical" && (
-            <span className="flex items-center gap-1 text-xs text-red-500 font-semibold">
-              <AlertCircle className="w-3.5 h-3.5" /> {t("player.hurryUp")}
-            </span>
-          )}
-        </div>
+    <div className="select-none relative" style={{ userSelect: "none", WebkitUserSelect: "none" }}>
+      {/* Floating Circular Timer */}
+      {secondsLeft !== null && !submitted && (
+        <CircularTimerFAB
+          secondsLeft={secondsLeft}
+          totalSeconds={totalSeconds}
+          state={timerState}
+        />
       )}
 
       {/* Progress bar */}
-      <div className="w-full h-1.5 bg-muted">
+      <div className="w-full h-1.5 bg-muted sticky top-[57px] z-20">
         <div
           className="h-full bg-primary transition-all duration-500"
-          style={{ width: `${(answeredCount / questions.length) * 100}%` }}
+          style={{ width: `${questions.length > 0 ? (answeredCount / questions.length) * 100 : 0}%` }}
         />
       </div>
 
       {/* Questions */}
-      <div className="p-6 space-y-8 max-w-3xl mx-auto">
+      <div className="p-6 space-y-8 max-w-3xl mx-auto pb-40">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{quiz.title}</h1>
           {quiz.description && <p className="text-muted-foreground mt-1">{quiz.description}</p>}
-          {quiz.time_limit_minutes && (
-            <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5" />
-              {t("player.timeLimitNote").replace("{n}", String(quiz.time_limit_minutes))}
-            </p>
-          )}
+          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+            <span>{answeredCount} / {questions.length} {t("player.answered")}</span>
+            {quiz.time_limit_minutes && (
+              <span className={`font-medium ${timerState === "critical" ? "text-red-500" : timerState === "warning" ? "text-amber-500" : ""}`}>
+                {timerState === "warning" && <><AlertTriangle className="inline w-3.5 h-3.5 me-1" />{t("player.lastMinute")}</>}
+                {timerState === "critical" && <><AlertCircle className="inline w-3.5 h-3.5 me-1" />{t("player.hurryUp")}</>}
+              </span>
+            )}
+          </div>
         </div>
 
         {questions.map((q, i) => {
@@ -270,16 +425,30 @@ export default function QuizPlayer({
           return (
             <div
               key={q.id}
-              className={`bg-card border rounded-xl p-6 transition-all duration-200 ${isAnswered ? "border-primary/30" : "border-border"}`}
+              className={`bg-card border rounded-xl p-6 transition-all duration-200 ${
+                isAnswered ? "border-primary/30 shadow-sm" : "border-border"
+              }`}
             >
               <div className="flex items-start gap-3 mb-4">
-                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5 transition-colors ${isAnswered ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                <span
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5 transition-colors ${
+                    isAnswered ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                  }`}
+                >
                   {i + 1}
                 </span>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 ${q.question_type === "mcq" ? "bg-blue-500/10 text-blue-600" : "bg-purple-500/10 text-purple-600"}`}>
-                      {q.question_type === "mcq" ? <CheckCircle2 className="w-3 h-3" /> : <PenLine className="w-3 h-3" />}
+                    <span
+                      className={`text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                        q.question_type === "mcq"
+                          ? "bg-blue-500/10 text-blue-600"
+                          : "bg-purple-500/10 text-purple-600"
+                      }`}
+                    >
+                      {q.question_type === "mcq"
+                        ? <CheckCircle2 className="w-3 h-3" />
+                        : <PenLine className="w-3 h-3" />}
                       {t(q.question_type === "mcq" ? "quiz.multipleChoice" : "quiz.written")} · {q.points} {t("quiz.points").toLowerCase()}
                     </span>
                     {isAnswered && <CheckCircle2 className="w-4 h-4 text-primary" />}
@@ -292,7 +461,9 @@ export default function QuizPlayer({
                       draggable={false}
                     />
                   )}
-                  <p className="text-foreground font-medium text-base leading-relaxed">{q.question_text}</p>
+                  <p className="text-foreground font-medium text-base leading-relaxed">
+                    {q.question_text}
+                  </p>
                 </div>
               </div>
 
@@ -309,8 +480,16 @@ export default function QuizPlayer({
                           : "bg-background border-border text-foreground hover:border-primary/50 hover:bg-muted/30"
                       }`}
                     >
-                      <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${answer.optionId === opt.id ? "border-primary bg-primary" : "border-muted-foreground"}`}>
-                        {answer.optionId === opt.id && <span className="w-2 h-2 rounded-full bg-white" />}
+                      <span
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                          answer.optionId === opt.id
+                            ? "border-primary bg-primary"
+                            : "border-muted-foreground"
+                        }`}
+                      >
+                        {answer.optionId === opt.id && (
+                          <span className="w-2 h-2 rounded-full bg-white" />
+                        )}
                       </span>
                       {opt.option_text}
                     </button>
@@ -336,12 +515,14 @@ export default function QuizPlayer({
           );
         })}
 
-        {/* Submit section */}
+        {/* Submit */}
         <div className="bg-card border border-border rounded-xl p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="font-semibold text-foreground">{t("player.readyToSubmit")}</p>
-              <p className="text-sm text-muted-foreground">{answeredCount} / {questions.length} {t("player.answered_of")}</p>
+              <p className="text-sm text-muted-foreground">
+                {answeredCount} / {questions.length} {t("player.answered_of")}
+              </p>
             </div>
             {answeredCount < questions.length && (
               <div className="flex items-center gap-1 text-amber-600 text-sm">

@@ -1,6 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import Navigation from "@/components/Navigation";
 import QuizPlayer from "@/components/QuizPlayer";
 import { startQuiz } from "@/app/manage/actions";
 import Link from "next/link";
@@ -31,17 +30,23 @@ export default async function QuizPage({
   const mcqCount = questions.filter((q: any) => q.question_type === "mcq").length;
   const writtenCount = questions.filter((q: any) => q.question_type === "written").length;
   const totalPoints = questions.reduce((s: number, q: any) => s + q.points, 0);
+  const totalMcqPoints = questions.filter((q: any) => q.question_type === "mcq").reduce((s: number, q: any) => s + q.points, 0);
+  const hasWrittenQuestions = writtenCount > 0;
 
-  // Check for existing submission
+  // Check for existing submission — include scores for results screen
   const { data: existingSubmission } = await supabase
     .from("quiz_submissions")
-    .select("id, status, started_at, quiz_submission_answers(question_id, selected_option_id, text_answer)")
+    .select("id, status, started_at, mcq_score, final_score, quiz_submission_answers(question_id, selected_option_id, text_answer)")
     .eq("quiz_id", quizId)
     .eq("student_id", user.id)
     .maybeSingle();
 
-  const hasInProgress = existingSubmission?.status === "in_progress";
-  const shouldShowPlayer = start === "1" || hasInProgress;
+  const submissionStatus = existingSubmission?.status as "in_progress" | "submitted" | "graded" | undefined;
+  const alreadyFinished = submissionStatus === "submitted" || submissionStatus === "graded";
+  const hasInProgress = submissionStatus === "in_progress";
+
+  // Show lobby unless: user clicked start, has in_progress, or already finished (show results)
+  const shouldShowPlayer = start === "1" || hasInProgress || alreadyFinished;
 
   let submissionId = existingSubmission?.id || null;
   let startedAt = existingSubmission?.started_at || new Date().toISOString();
@@ -74,12 +79,20 @@ export default async function QuizPage({
           startedAt={startedAt}
           existingAnswers={existingAnswers as any}
           showGradeImmediately={quiz.show_grade_immediately}
+          initialStatus={submissionStatus}
+          initialScore={alreadyFinished ? {
+            mcqScore: existingSubmission?.mcq_score ?? 0,
+            finalScore: existingSubmission?.final_score ?? null,
+            totalMcqPoints,
+            totalPoints,
+            hasWrittenQuestions,
+          } : undefined}
         />
       </div>
     );
   }
 
-  // Quiz Lobby — bilingual labels will be applied by QuizPlayer wrapper; server page uses English/Arabic inline
+  // Quiz Lobby
   return (
     <div className="min-h-screen bg-background">
       <nav className="flex items-center gap-4 px-6 py-4 border-b border-border bg-card">
