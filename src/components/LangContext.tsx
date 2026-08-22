@@ -147,6 +147,7 @@ const translations: Record<string, Record<Lang, string>> = {
   "playground.timeout": { en: "Execution timed out (5s limit). Check for infinite loops.", ar: "انتهت مهلة التنفيذ (5 ثوانٍ). تحقق من وجود حلقات لا نهاية لها." },
   "playground.language": { en: "Language", ar: "اللغة" },
   "playground.copyCode": { en: "Copy Code", ar: "نسخ الكود" },
+  "playground.clearCode": { en: "Clear Code", ar: "مسح الكود" },
   "playground.copied": { en: "Copied!", ar: "تم النسخ!" },
   "nav.playground": { en: "Playground", ar: "ساحة البرمجة" },
 };

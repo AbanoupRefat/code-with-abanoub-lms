@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
 import {
-  Play, RotateCcw, Copy, Check, Terminal, Loader2, X, AlertCircle,
+  Play, RotateCcw, Copy, Check, Terminal, Loader2, X, AlertCircle, Trash2,
 } from "lucide-react";
 import { useLang } from "@/components/LangContext";
 
@@ -172,6 +172,7 @@ _out
 
   const handleClear = () => setLogs([]);
   const handleReset = () => { setCode(DEFAULT_CODE[language]); setLogs([]); };
+  const handleClearCode = () => { setCode(""); };
   const handleCopy = async () => {
     await navigator.clipboard.writeText(code);
     setCopied(true);
@@ -233,6 +234,9 @@ _out
         <div className="flex items-center gap-2">
           <button onClick={handleCopy} title={t("playground.copyCode")} className="p-1.5 rounded text-[#858585] hover:text-white transition-colors">
             {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+          </button>
+          <button onClick={handleClearCode} title={t("playground.clearCode")} className="p-1.5 rounded text-[#858585] hover:text-red-400 transition-colors">
+            <Trash2 className="w-4 h-4" />
           </button>
           <button onClick={handleReset} title={t("playground.reset")} className="p-1.5 rounded text-[#858585] hover:text-white transition-colors">
             <RotateCcw className="w-4 h-4" />
