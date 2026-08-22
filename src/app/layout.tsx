@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import ActivityTracker from "@/components/ActivityTracker";
-import { LangProvider, LangToggle } from "@/components/LangContext";
+import { LangProvider } from "@/components/LangContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -28,10 +28,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     >
       <body className="min-h-full flex flex-col">
         <LangProvider>
-          {/* Fixed language toggle — always top-right */}
-          <div className="fixed top-4 right-4 z-[9999]">
-            <LangToggle />
-          </div>
           {children}
           <ActivityTracker />
           <Toaster richColors position="bottom-right" />

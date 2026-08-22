@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { BookOpen, Home, Library, User, LogOut } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import { useLang, LangToggle } from "@/components/LangContext";
 
 export default function Navigation({ profile }: { profile: any }) {
   const pathname = usePathname();
@@ -23,6 +24,7 @@ export default function Navigation({ profile }: { profile: any }) {
   };
 
   const initial = profile?.full_name ? profile.full_name.charAt(0).toUpperCase() : "S";
+  const { t } = useLang();
 
   return (
     <aside className="w-64 bg-card border-r border-border hidden md:flex flex-col h-screen sticky top-0">
@@ -70,13 +72,16 @@ export default function Navigation({ profile }: { profile: any }) {
             <p className="text-xs text-muted-foreground truncate">{profile?.role || "student"}</p>
           </div>
         </div>
-        <button 
-          onClick={handleSignOut}
-          className="flex w-full items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 cursor-pointer"
-        >
-          <LogOut className="w-4 h-4" />
-          Sign Out
-        </button>
+        <div className="space-y-2">
+          <LangToggle />
+          <button 
+            onClick={handleSignOut}
+            className="flex w-full items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign Out
+          </button>
+        </div>
       </div>
     </aside>
   );

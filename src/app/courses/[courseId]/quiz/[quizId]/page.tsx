@@ -4,6 +4,7 @@ import QuizPlayer from "@/components/QuizPlayer";
 import { startQuiz } from "@/app/manage/actions";
 import Link from "next/link";
 import { ChevronLeft, Clock, HelpCircle, PenLine, CheckSquare, Award, Info, Eye, EyeOff } from "lucide-react";
+import { LangToggle } from "@/components/LangContext";
 
 export default async function QuizPage({
   params,
@@ -66,11 +67,16 @@ export default async function QuizPage({
   if (shouldShowPlayer && submissionId) {
     return (
       <div className="flex min-h-screen bg-background flex-col">
-        <nav className="flex items-center gap-4 px-6 py-3 border-b border-border bg-card sticky top-0 z-30">
-          <Link href={`/courses/${courseId}`} className="text-muted-foreground hover:text-foreground transition-colors">
-            <ChevronLeft className="w-5 h-5" />
-          </Link>
-          <h2 className="font-semibold text-foreground">{quiz.title}</h2>
+        <nav className="flex items-center justify-between px-6 py-3 border-b border-border bg-card sticky top-0 z-30">
+          <div className="flex items-center gap-4">
+            <Link href={`/courses/${courseId}`} className="text-muted-foreground hover:text-foreground transition-colors">
+              <ChevronLeft className="w-5 h-5" />
+            </Link>
+            <h2 className="font-semibold text-foreground">{quiz.title}</h2>
+          </div>
+          <div className="w-32">
+            <LangToggle />
+          </div>
         </nav>
         <QuizPlayer
           quiz={quiz}
@@ -95,10 +101,13 @@ export default async function QuizPage({
   // Quiz Lobby
   return (
     <div className="min-h-screen bg-background">
-      <nav className="flex items-center gap-4 px-6 py-4 border-b border-border bg-card">
+      <nav className="flex items-center justify-between px-6 py-4 border-b border-border bg-card">
         <Link href={`/courses/${courseId}`} className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 text-sm">
           <ChevronLeft className="w-4 h-4" /> Back to Course
         </Link>
+        <div className="w-32">
+          <LangToggle />
+        </div>
       </nav>
       <div className="max-w-2xl mx-auto px-6 py-16 flex flex-col items-center text-center">
         <div className="w-16 h-16 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mb-6">
