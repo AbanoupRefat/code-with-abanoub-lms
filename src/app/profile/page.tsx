@@ -38,9 +38,11 @@ export default async function ProfilePage() {
     .from('quiz_submissions')
     .select(`
       score,
+      final_score,
       submitted_at,
       quizzes (
         title,
+        quiz_questions ( points ),
         units (
           courses ( title )
         )
@@ -196,7 +198,10 @@ export default async function ProfilePage() {
                       {quizSubmissions.map((sub: any, idx: number) => {
                         const courseTitle = sub.quizzes?.units?.courses?.title || 'Course';
                         const quizTitle = sub.quizzes?.title || 'Quiz';
-                        const isGoodScore = sub.score >= 80;
+                        const totalPts = sub.quizzes?.quiz_questions?.reduce((s: number, q: any) => s + (q.points || 0), 0) || 0;
+                        const actualScore = sub.final_score ?? sub.score ?? 0;
+                        const pct = totalPts > 0 ? Math.round((actualScore / totalPts) * 100) : 0;
+                        const isGoodScore = pct >= 80;
                         
                         return (
                           <tr key={idx} className="hover:bg-muted/10 transition-colors">
@@ -207,7 +212,7 @@ export default async function ProfilePage() {
                             </td>
                             <td className="px-6 py-4 text-right">
                               <span className={`inline-flex font-bold px-2.5 py-1 rounded-md ${isGoodScore ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                {sub.score}%
+                                {pct}%
                               </span>
                             </td>
                           </tr>
