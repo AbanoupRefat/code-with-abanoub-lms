@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { BookOpen, Users, LayoutDashboard, FileVideo, LogOut, ClipboardList, ClipboardCheck, BarChart2 } from "lucide-react";
-import { useLang, LangToggle } from "@/components/LangContext";
+import { useLang } from "@/components/LangContext";
 
 export default function AdminNavigation() {
   const pathname = usePathname();
