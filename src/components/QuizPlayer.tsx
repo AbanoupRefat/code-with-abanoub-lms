@@ -260,13 +260,13 @@ export default function QuizPlayer({
     timedOut: boolean; mcqScore: number; totalMcqPoints: number;
     finalScore: number | null; hasWrittenQuestions: boolean;
   } | null>(
-    isAlreadyDone && initialScore
+    isAlreadyDone
       ? {
           timedOut: false,
-          mcqScore: initialScore.mcqScore,
-          totalMcqPoints: initialScore.totalMcqPoints,
-          finalScore: initialScore.finalScore,
-          hasWrittenQuestions: initialScore.hasWrittenQuestions,
+          mcqScore: initialScore?.mcqScore ?? 0,
+          totalMcqPoints: initialScore?.totalMcqPoints ?? 0,
+          finalScore: initialScore?.finalScore ?? null,
+          hasWrittenQuestions: initialScore?.hasWrittenQuestions ?? false,
         }
       : null
   );
@@ -367,14 +367,22 @@ export default function QuizPlayer({
   ).length;
 
   // ── Results ────────────────────────────────────────────────────────────────
-  if (submitted && submissionResult) {
+  // Hard gate: if already done (from server) OR just submitted, ALWAYS show results — never fall through to quiz form
+  if (isAlreadyDone || submitted) {
+    const result = submissionResult ?? {
+      timedOut: false,
+      mcqScore: initialScore?.mcqScore ?? 0,
+      totalMcqPoints: initialScore?.totalMcqPoints ?? 0,
+      finalScore: initialScore?.finalScore ?? null,
+      hasWrittenQuestions: initialScore?.hasWrittenQuestions ?? false,
+    };
     return (
       <ResultsScreen
-        timedOut={submissionResult.timedOut}
-        mcqScore={submissionResult.mcqScore}
-        totalMcqPoints={submissionResult.totalMcqPoints}
-        finalScore={submissionResult.finalScore}
-        hasWrittenQuestions={submissionResult.hasWrittenQuestions}
+        timedOut={result.timedOut}
+        mcqScore={result.mcqScore}
+        totalMcqPoints={result.totalMcqPoints}
+        finalScore={result.finalScore}
+        hasWrittenQuestions={result.hasWrittenQuestions}
         showGradeImmediately={showGradeImmediately}
         onBack={() => router.back()}
         t={t}
