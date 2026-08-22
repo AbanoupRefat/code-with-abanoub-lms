@@ -46,17 +46,22 @@ export default function AdminNavigation() {
               <Link
                 key={item.key}
                 href={item.href}
-                title={t(item.key)}
-                className={`relative flex flex-col items-center justify-center p-1.5 sm:p-2.5 rounded-full transition-all group ${
-                  isActive
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                className={`relative flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-full transition-all group ${
+                  isActive 
+                    ? "text-primary" 
+                    : "text-muted-foreground hover:text-primary hover:bg-primary/10"
                 }`}
               >
-                <Icon className={`w-5 h-5 transition-transform group-hover:scale-110 ${isActive ? "scale-110" : ""}`} />
+                <Icon className={`w-5 h-5 sm:w-[22px] sm:h-[22px] transition-all duration-300 group-hover:-translate-y-1 group-hover:scale-125 ${isActive ? "scale-110" : ""}`} />
                 {isActive && (
                   <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-primary" />
                 )}
+                {/* Hover Tooltip */}
+                <span className="absolute -top-10 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 transition-all duration-300 bg-primary text-primary-foreground text-xs font-bold px-2.5 py-1 rounded-md shadow-lg pointer-events-none whitespace-nowrap z-50 origin-bottom">
+                  {t(item.key)}
+                  {/* Tooltip arrow */}
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-primary rotate-45"></span>
+                </span>
               </Link>
             );
           })}
@@ -71,10 +76,15 @@ export default function AdminNavigation() {
 
           <Link 
             href="/dashboard" 
-            title={t("nav.exit")}
-            className="flex items-center justify-center p-1.5 sm:p-2.5 rounded-full transition-all text-muted-foreground hover:text-foreground hover:bg-muted/50 group"
+            className="relative flex items-center justify-center p-2 sm:p-2.5 rounded-full transition-all text-muted-foreground hover:text-red-500 hover:bg-red-500/10 group cursor-pointer"
           >
-            <LogOut className="w-5 h-5 transition-transform group-hover:scale-110" />
+            <LogOut className="w-5 h-5 sm:w-[22px] sm:h-[22px] transition-all duration-300 group-hover:-translate-y-1 group-hover:scale-125" />
+            {/* Hover Tooltip */}
+            <span className="absolute -top-10 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 transition-all duration-300 bg-red-600 text-white text-xs font-bold px-2.5 py-1 rounded-md shadow-lg pointer-events-none whitespace-nowrap z-50 origin-bottom">
+              {t("nav.exit")}
+              {/* Tooltip arrow */}
+              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-red-600 rotate-45"></span>
+            </span>
           </Link>
         </div>
       </nav>

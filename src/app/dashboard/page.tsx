@@ -108,10 +108,10 @@ export default async function DashboardPage() {
           <p className="text-muted-foreground text-sm">Here is what's happening with your courses today.</p>
         </header>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="clean-panel p-6 rounded-lg flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-muted border border-border flex items-center justify-center text-foreground">
+        {/* Stats Slider */}
+        <div className="flex overflow-x-auto pb-4 gap-6 mb-12 snap-x hide-scrollbar">
+          <div className="clean-panel p-6 rounded-lg flex items-center gap-4 min-w-[280px] sm:min-w-[320px] snap-center shrink-0 border-l-4 border-l-primary shadow-sm hover:shadow-md transition-shadow">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
               <BookOpen className="w-5 h-5" />
             </div>
             <div>
@@ -120,8 +120,8 @@ export default async function DashboardPage() {
             </div>
           </div>
           
-          <div className="clean-panel p-6 rounded-lg flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-muted border border-border flex items-center justify-center text-foreground">
+          <div className="clean-panel p-6 rounded-lg flex items-center gap-4 min-w-[280px] sm:min-w-[320px] snap-center shrink-0 border-l-4 border-l-primary shadow-sm hover:shadow-md transition-shadow">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
               <Clock className="w-5 h-5" />
             </div>
             <div>
@@ -130,8 +130,8 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          <div className="clean-panel p-6 rounded-lg flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-muted border border-border flex items-center justify-center text-foreground">
+          <div className="clean-panel p-6 rounded-lg flex items-center gap-4 min-w-[280px] sm:min-w-[320px] snap-center shrink-0 border-l-4 border-l-primary shadow-sm hover:shadow-md transition-shadow">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
               <Trophy className="w-5 h-5" />
             </div>
             <div>

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #000000;
+  --color-primary: #9333ea;
   --color-primary-foreground: #ffffff;
   --color-muted: #f4f4f5;
   --color-muted-foreground: #71717a;
@@ -22,7 +22,7 @@
     --foreground: #fafafa;
   }
   @theme {
-    --color-primary: #ffffff;
+    --color-primary: #c084fc;
     --color-primary-foreground: #000000;
     --color-muted: #27272a;
     --color-muted-foreground: #a1a1aa;
@@ -45,4 +45,12 @@ body {
   background-color: var(--color-card);
   border: 1px solid var(--color-border);
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
