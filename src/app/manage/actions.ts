@@ -303,6 +303,68 @@ export async function createQuizQuestion(quizId: string, courseId: string, formD
   revalidatePath(`/manage/quizzes/${quizId}`);
 }
 
+export async function importQuestionsFromJson(quizId: string, courseId: string, jsonString: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  if (profile?.role !== 'admin') throw new Error("Unauthorized");
+
+  let questions: any[];
+  try {
+    const parsed = JSON.parse(jsonString);
+    questions = Array.isArray(parsed) ? parsed : parsed.questions;
+    if (!Array.isArray(questions)) throw new Error("JSON must be an array of questions or { questions: [...] }");
+  } catch (e: any) {
+    throw new Error("Invalid JSON: " + e.message);
+  }
+
+  // Get current question count to set order_index correctly
+  const { data: existing } = await supabase
+    .from('quiz_questions')
+    .select('id')
+    .eq('quiz_id', quizId);
+  let orderStart = (existing?.length || 0) + 1;
+
+  for (const q of questions) {
+    if (!q.question_text || typeof q.question_text !== 'string') throw new Error("Each question must have a 'question_text' field.");
+    const questionType = q.question_type === 'written' ? 'written' : 'mcq';
+    const points = typeof q.points === 'number' ? q.points : 1;
+    const imageUrl = q.image_url || null;
+
+    const { data: question, error: qErr } = await supabase
+      .from('quiz_questions')
+      .insert([{
+        quiz_id: quizId,
+        question_text: q.question_text,
+        question_type: questionType,
+        order_index: orderStart++,
+        points,
+        image_url: imageUrl,
+      }])
+      .select()
+      .single();
+
+    if (qErr) throw new Error("Failed to insert question: " + qErr.message);
+
+    if (questionType === 'mcq') {
+      if (!Array.isArray(q.options) || q.options.length < 2) throw new Error(`MCQ question "${q.question_text}" must have at least 2 options.`);
+      const optionRows = q.options.map((opt: any, i: number) => ({
+        question_id: question.id,
+        option_text: typeof opt === 'string' ? opt : opt.text,
+        is_correct: typeof opt === 'string' ? i === (q.correct_index ?? 0) : !!opt.is_correct,
+      }));
+      const { error: optErr } = await supabase.from('quiz_options').insert(optionRows);
+      if (optErr) throw new Error("Failed to insert options: " + optErr.message);
+    }
+  }
+
+  revalidatePath(`/manage/courses/${courseId}`);
+  revalidatePath(`/manage/quizzes/${quizId}`);
+  return { imported: questions.length };
+}
+
+
 export async function updateQuizQuestion(questionId: string, quizId: string, courseId: string, formData: FormData) {
   const supabase = await createClient();
   const questionText = formData.get("question_text") as string;

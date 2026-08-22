@@ -1,10 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Trash2, CheckSquare, FileText, Image, Clock, Award, Hash } from "lucide-react";
+import {
+  Plus, Trash2, CheckSquare, FileText, Image, Clock, Award, Hash,
+  FileJson, ChevronDown, ChevronUp, Copy, Check, Upload, AlertCircle, Loader2,
+} from "lucide-react";
 import Modal from "@/components/Modal";
 import { toast } from "sonner";
-import { createQuizQuestion, deleteQuizQuestion } from "@/app/manage/actions";
+import { createQuizQuestion, deleteQuizQuestion, importQuestionsFromJson } from "@/app/manage/actions";
 import { useLang } from "@/components/LangContext";
 
 interface QuizOption { id: string; option_text: string; is_correct: boolean; }
@@ -19,17 +22,82 @@ interface Quiz {
   quiz_questions: QuizQuestion[];
 }
 
+// ── The canonical JSON schema prompt ─────────────────────────────────────────
+const JSON_PROMPT = `You are a quiz question generator. Generate questions in the following JSON format ONLY.
+Return a JSON array (or an object with a "questions" key) with this exact structure:
+
+[
+  {
+    "question_text": "What is 2 + 2?",
+    "question_type": "mcq",
+    "points": 1,
+    "image_url": null,
+    "options": ["2", "3", "4", "5"],
+    "correct_index": 2
+  },
+  {
+    "question_text": "Explain the concept of recursion in programming.",
+    "question_type": "written",
+    "points": 5,
+    "image_url": null
+  }
+]
+
+RULES:
+- "question_type" must be either "mcq" or "written"
+- For "mcq" questions: include "options" (array of strings, min 2) and "correct_index" (0-based index of the correct answer)
+- For "written" questions: omit "options" and "correct_index"
+- "points" must be a number (integer, e.g. 1, 2, 5)
+- "image_url" is optional — set to null if no image
+- Do NOT include any explanation or markdown outside the JSON array
+- Return ONLY valid JSON`;
+
+// ── Example JSON shown in the import panel ────────────────────────────────────
+const EXAMPLE_JSON = `[
+  {
+    "question_text": "What is the capital of France?",
+    "question_type": "mcq",
+    "points": 1,
+    "image_url": null,
+    "options": ["Berlin", "Madrid", "Paris", "Rome"],
+    "correct_index": 2
+  },
+  {
+    "question_text": "What is the time complexity of binary search?",
+    "question_type": "mcq",
+    "points": 2,
+    "image_url": null,
+    "options": ["O(n)", "O(log n)", "O(n²)", "O(1)"],
+    "correct_index": 1
+  },
+  {
+    "question_text": "Describe the difference between SQL and NoSQL databases.",
+    "question_type": "written",
+    "points": 5,
+    "image_url": null
+  }
+]`;
+
 export default function QuizBuilderClient({ quiz, courseId }: { quiz: Quiz; courseId: string }) {
   const { t } = useLang();
   const [questions, setQuestions] = useState<QuizQuestion[]>(
     quiz.quiz_questions.slice().sort((a, b) => a.order_index - b.order_index)
   );
+
+  // Add question modal state
   const [isAdding, setIsAdding] = useState(false);
   const [questionType, setQuestionType] = useState<"mcq" | "written">("mcq");
   const [mcqOptions, setMcqOptions] = useState(["", "", "", ""]);
   const [correctIndex, setCorrectIndex] = useState(0);
   const [imageUrl, setImageUrl] = useState("");
+
+  // JSON import panel state
+  const [showImport, setShowImport] = useState(false);
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [jsonInput, setJsonInput] = useState("");
+  const [promptCopied, setPromptCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [isImporting, setIsImporting] = useState(false);
 
   const handleAdd = async (formData: FormData) => {
     formData.set("options", JSON.stringify(mcqOptions.filter((o) => o.trim())));
@@ -66,6 +134,29 @@ export default function QuizBuilderClient({ quiz, courseId }: { quiz: Quiz; cour
     });
   };
 
+  const handleImport = async () => {
+    if (!jsonInput.trim()) { toast.error("Please paste your JSON first."); return; }
+    setIsImporting(true);
+    try {
+      const result = await importQuestionsFromJson(quiz.id, courseId, jsonInput);
+      toast.success(`${result.imported} question${result.imported !== 1 ? "s" : ""} imported successfully!`);
+      setJsonInput("");
+      setShowImport(false);
+      window.location.reload();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleCopyPrompt = async () => {
+    await navigator.clipboard.writeText(JSON_PROMPT);
+    setPromptCopied(true);
+    toast.success("Prompt copied to clipboard!");
+    setTimeout(() => setPromptCopied(false), 2500);
+  };
+
   const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
 
   return (
@@ -85,6 +176,108 @@ export default function QuizBuilderClient({ quiz, courseId }: { quiz: Quiz; cour
             <p className="text-xs text-muted-foreground uppercase tracking-wider">{stat.label}</p>
           </div>
         ))}
+      </div>
+
+      {/* ── JSON Import Panel ─────────────────────────────────────────────── */}
+      <div className="rounded-xl border border-primary/30 bg-primary/5 overflow-hidden">
+        <button
+          onClick={() => setShowImport(!showImport)}
+          className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-primary/10 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <FileJson className="w-5 h-5 text-primary" />
+            <div>
+              <p className="font-semibold text-foreground">Import Questions from JSON</p>
+              <p className="text-xs text-muted-foreground mt-0.5">استيراد أسئلة من ملف JSON · Paste AI-generated JSON to bulk-import all questions at once</p>
+            </div>
+          </div>
+          {showImport ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+        </button>
+
+        {showImport && (
+          <div className="border-t border-primary/20 p-5 space-y-5">
+
+            {/* Pinned Prompt Section */}
+            <div className="rounded-lg border border-border bg-card overflow-hidden">
+              <button
+                onClick={() => setShowPrompt(!showPrompt)}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <p className="text-sm font-semibold text-foreground">
+                    Step 1 — Copy this prompt into ChatGPT / Claude / Gemini
+                  </p>
+                  <span className="text-xs text-muted-foreground">الخطوة ١ · انسخ هذا البرومبت إلى الذكاء الاصطناعي</span>
+                </div>
+                {showPrompt ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+              </button>
+
+              {showPrompt && (
+                <div className="border-t border-border">
+                  <div className="flex items-center justify-between px-4 py-2 bg-muted/40 border-b border-border">
+                    <span className="text-xs text-muted-foreground font-mono">AI Prompt — JSON Schema</span>
+                    <button
+                      onClick={handleCopyPrompt}
+                      className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-all ${promptCopied ? "bg-green-500/10 text-green-600 border border-green-500/20" : "bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20"}`}
+                    >
+                      {promptCopied ? <><Check className="w-3.5 h-3.5" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy Prompt</>}
+                    </button>
+                  </div>
+                  <pre className="p-4 text-xs text-foreground font-mono whitespace-pre-wrap leading-relaxed bg-muted/20 max-h-64 overflow-y-auto">
+                    {JSON_PROMPT}
+                  </pre>
+                </div>
+              )}
+            </div>
+
+            {/* JSON Example */}
+            <div className="rounded-lg border border-border bg-card overflow-hidden">
+              <div className="px-4 py-3 bg-muted/30 border-b border-border flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-500" />
+                <p className="text-sm font-semibold text-foreground">
+                  Step 2 — Expected JSON structure
+                  <span className="text-xs text-muted-foreground font-normal ms-2">الخطوة ٢ · هيكل JSON المتوقع</span>
+                </p>
+              </div>
+              <pre className="p-4 text-xs text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed bg-muted/10 max-h-52 overflow-y-auto">
+                {EXAMPLE_JSON}
+              </pre>
+            </div>
+
+            {/* Paste & Import */}
+            <div className="space-y-3">
+              <label className="block text-sm font-semibold text-foreground">
+                Step 3 — Paste your JSON here
+                <span className="text-xs text-muted-foreground font-normal ms-2">الخطوة ٣ · الصق JSON هنا</span>
+              </label>
+              <textarea
+                value={jsonInput}
+                onChange={(e) => setJsonInput(e.target.value)}
+                placeholder={`Paste the JSON array from your AI here...\n[\n  { "question_text": "...", "question_type": "mcq", ... }\n]`}
+                rows={10}
+                className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm text-foreground font-mono resize-none focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all placeholder:text-muted-foreground/50"
+              />
+              {jsonInput.trim() && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 px-3 py-2 rounded-md">
+                  <Check className="w-3.5 h-3.5 text-green-500" />
+                  {jsonInput.trim().length} characters pasted
+                </div>
+              )}
+              <button
+                onClick={handleImport}
+                disabled={isImporting || !jsonInput.trim()}
+                className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {isImporting ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Importing...</>
+                ) : (
+                  <><Upload className="w-4 h-4" /> Import All Questions</>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Questions List */}
@@ -206,7 +399,7 @@ export default function QuizBuilderClient({ quiz, courseId }: { quiz: Quiz; cour
                         next[i] = e.target.value;
                         setMcqOptions(next);
                       }}
-                      placeholder={`${t("quiz.answerOptions").replace("Options", "").trim()} ${i + 1}${i === correctIndex ? ` (${t("quiz.correct")})` : ""}`}
+                      placeholder={`Option ${i + 1}${i === correctIndex ? ` (${t("quiz.correct")})` : ""}`}
                       className={`flex-1 bg-background border rounded-md px-3 py-2 text-sm text-foreground ${i === correctIndex ? "border-green-500" : "border-border"}`}
                     />
                   </div>
