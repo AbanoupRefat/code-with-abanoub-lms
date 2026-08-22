@@ -3,7 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { grantStudentAccess, revokeStudentAccess } from "@/lib/google-drive";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, buildEventEmailTemplate } from "@/lib/email";
 import { redirect } from "next/navigation";
 
 export async function createCourse(formData: FormData) {
@@ -681,24 +681,11 @@ export async function createCalendarEvent(data: {
     if (students && students.length > 0) {
       const bccEmails = students.map(s => s.email).filter(e => e).join(',');
       if (bccEmails) {
-        const html = `
-          <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
-            <h2 style="color: #3b82f6;">New Event Scheduled: ${data.title}</h2>
-            <p>A new event has been added to your LMS Calendar.</p>
-            <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
-              <p><strong>Type:</strong> ${data.event_type.toUpperCase()}</p>
-              <p><strong>Date:</strong> ${new Date(data.event_date).toLocaleString()}</p>
-              ${data.description ? `<p><strong>Description:</strong> ${data.description}</p>` : ''}
-            </div>
-            <p>Please log in to the LMS and check your Calendar for more details.</p>
-            <br/>
-            <p style="font-size: 12px; color: #6b7280;">This is an automated notification from Code with Abanoub LMS.</p>
-          </div>
-        `;
+        const { subject, html } = buildEventEmailTemplate(data);
         
         await sendEmail({
           bcc: bccEmails,
-          subject: `New Calendar Event: ${data.title}`,
+          subject,
           html,
         });
       }
