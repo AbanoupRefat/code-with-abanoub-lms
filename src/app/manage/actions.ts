@@ -672,7 +672,7 @@ export async function createCalendarEvent(data: {
   
   if (error) {
     console.error("Error creating calendar event:", error);
-    throw new Error(error.message);
+    return { success: false, error: error.message };
   }
 
   // Notify students
@@ -709,6 +709,7 @@ export async function createCalendarEvent(data: {
   
   revalidatePath('/manage/calendar');
   revalidatePath('/calendar');
+  return { success: true };
 }
 
 export async function deleteCalendarEvent(id: string) {

@@ -76,11 +76,15 @@ Example output:
         event_type: addForm.event_type as any,
         meeting_url: addForm.event_type === 'live_session' ? 'room_' + Date.now() + Math.random().toString(36).substring(7) : "",
       };
-      await createCalendarEvent(payload);
-      setAddForm({
-        title: "", description: "", event_type: "lecture", event_date: "", course_id: "", quiz_id: ""
-      });
-      router.refresh();
+      const res = await createCalendarEvent(payload);
+      if (res && !res.success) {
+        alert("Error: " + res.error);
+      } else {
+        setAddForm({
+          title: "", description: "", event_type: "lecture", event_date: "", course_id: "", quiz_id: ""
+        });
+        router.refresh();
+      }
     } catch (err: any) {
       alert("Error: " + err.message);
     }
