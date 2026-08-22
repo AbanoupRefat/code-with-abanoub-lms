@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+import ActivityTracker from "@/components/ActivityTracker";
+import { LangProvider } from "@/components/LangContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -25,9 +27,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {children}
-        <Toaster richColors position="bottom-right" />
+        <LangProvider>
+          {children}
+          <ActivityTracker />
+          <Toaster richColors position="bottom-right" />
+        </LangProvider>
       </body>
     </html>
   );
 }
+

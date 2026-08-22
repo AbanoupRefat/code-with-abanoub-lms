@@ -301,7 +301,7 @@ export default async function CoursePlayerPage(props: {
                   {unit.quizzes?.slice().sort((a:any,b:any)=>a.order_index-b.order_index).map((quiz: any) => {
                     const isCurrentQuiz = searchParams.quizId === quiz.id;
                     return (
-                      <Link href={`/courses/${courseId}?quizId=${quiz.id}`} key={quiz.id} className="block mt-2">
+                      <Link href={`/courses/${courseId}/quiz/${quiz.id}`} key={quiz.id} className="block mt-2">
                         <div 
                           className={`p-3 rounded-md flex items-center gap-3 transition-colors ${
                             isCurrentQuiz ? "bg-primary/10 border border-primary/30" : "hover:bg-muted/50 border border-transparent"
@@ -315,7 +315,9 @@ export default async function CoursePlayerPage(props: {
                             <p className={`text-sm font-medium truncate ${isCurrentQuiz ? "text-foreground" : "text-primary"}`}>
                               {quiz.title}
                             </p>
-                            <p className="text-xs text-muted-foreground mt-1">Assignment / Quiz</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {quiz.time_limit_minutes ? `⏱ ${quiz.time_limit_minutes} min` : 'Quiz'}
+                            </p>
                           </div>
                         </div>
                       </Link>

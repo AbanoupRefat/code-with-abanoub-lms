@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Edit2, Trash2, X } from "lucide-react";
+import { Edit2, Trash2, Settings } from "lucide-react";
 import SubmitButton from "./SubmitButton";
 import Modal from "./Modal";
 import { toast } from "sonner";
+import Link from "next/link";
 import { deleteUnit, updateUnit, deleteLesson, updateLesson, deleteQuiz, updateQuiz } from "@/app/manage/actions";
 
 export function EditableUnit({ unit, courseId, children }: { unit: any, courseId: string, children?: React.ReactNode }) {
@@ -127,9 +128,15 @@ export function EditableUnit({ unit, courseId, children }: { unit: any, courseId
             <label className="block text-sm font-medium text-foreground mb-1">Description</label>
             <textarea name="description" placeholder="Instructions for the student" rows={2} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Order Index</label>
-            <input type="number" name="order_index" placeholder="e.g. 99" required className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Order Index</label>
+              <input type="number" name="order_index" placeholder="e.g. 1" required className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">⏱ Time Limit (minutes)</label>
+              <input type="number" name="time_limit_minutes" placeholder="e.g. 30" min="1" className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+            </div>
           </div>
           <div className="flex items-center gap-2 pt-2 pb-2">
             <input type="checkbox" name="show_grade_immediately" id="show_grade_immediately" className="w-4 h-4 rounded border-border" />
@@ -242,9 +249,15 @@ export function EditableQuiz({ quiz, courseId }: { quiz: any, courseId: string }
             <label className="block text-sm font-medium text-foreground mb-1">Description</label>
             <textarea name="description" defaultValue={quiz.description} rows={2} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Order Index</label>
-            <input type="number" name="order_index" defaultValue={quiz.order_index} required className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Order Index</label>
+              <input type="number" name="order_index" defaultValue={quiz.order_index} required className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">⏱ Time Limit (min)</label>
+              <input type="number" name="time_limit_minutes" defaultValue={quiz.time_limit_minutes || ''} min="1" placeholder="None" className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+            </div>
           </div>
           <div className="flex items-center gap-2 pt-2 pb-2">
             <input type="checkbox" name="show_grade_immediately" id={`edit-quiz-grade-${quiz.id}`} defaultChecked={quiz.show_grade_immediately} className="w-4 h-4 rounded border-border" />
@@ -257,11 +270,13 @@ export function EditableQuiz({ quiz, courseId }: { quiz: any, courseId: string }
       </Modal>
 
       <div className="text-sm text-primary font-medium flex items-center justify-between group py-1 mt-1">
-        <div className="flex items-center gap-2">
-          <span className="w-4 h-4 bg-primary/20 text-primary rounded-sm flex items-center justify-center text-[10px]">{quiz.order_index}</span>
-          [Quiz] {quiz.title}
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="w-4 h-4 bg-primary/20 text-primary rounded-sm flex items-center justify-center text-[10px] flex-shrink-0">{quiz.order_index}</span>
+          <span className="truncate">[Quiz] {quiz.title}</span>
+          {quiz.time_limit_minutes && <span className="text-xs text-muted-foreground flex-shrink-0">⏱{quiz.time_limit_minutes}m</span>}
         </div>
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 flex-shrink-0">
+          <Link href={`/manage/quizzes/${quiz.id}`} className="text-muted-foreground hover:text-primary" title="Manage Questions"><Settings className="w-3.5 h-3.5" /></Link>
           <button type="button" onClick={() => setIsEditing(true)} className="text-primary hover:text-primary/70"><Edit2 className="w-3.5 h-3.5" /></button>
           <button type="button" onClick={handleDelete} className="text-primary hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
         </div>

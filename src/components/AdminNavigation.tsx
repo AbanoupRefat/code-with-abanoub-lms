@@ -3,17 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { BookOpen, Users, LayoutDashboard, FileVideo, Shield, LogOut, ClipboardList } from "lucide-react";
+import { BookOpen, Users, LayoutDashboard, FileVideo, LogOut, ClipboardList, ClipboardCheck, BarChart2 } from "lucide-react";
+import { useLang, LangToggle } from "@/components/LangContext";
 
 export default function AdminNavigation() {
   const pathname = usePathname();
-  
+  const { t } = useLang();
+
   const navItems = [
-    { name: "Overview", href: "/manage", icon: LayoutDashboard },
-    { name: "Students", href: "/manage/students", icon: Users },
-    { name: "Enrollments", href: "/manage/enrollments", icon: ClipboardList },
-    { name: "Courses", href: "/manage/courses", icon: BookOpen },
-    { name: "Lessons", href: "/manage/lessons", icon: FileVideo },
+    { key: "nav.overview", href: "/manage", icon: LayoutDashboard },
+    { key: "nav.students", href: "/manage/students", icon: Users },
+    { key: "nav.enrollments", href: "/manage/enrollments", icon: ClipboardList },
+    { key: "nav.courses", href: "/manage/courses", icon: BookOpen },
+    { key: "nav.lessons", href: "/manage/lessons", icon: FileVideo },
+    { key: "nav.grading", href: "/manage/grading", icon: ClipboardCheck },
+    { key: "nav.analytics", href: "/manage/analytics", icon: BarChart2 },
   ];
 
   return (
@@ -34,30 +38,31 @@ export default function AdminNavigation() {
         <nav className="space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href;
-            
+            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+
             return (
               <Link
-                key={item.name}
+                key={item.key}
                 href={item.href}
                 className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium ${
-                  isActive 
-                    ? "bg-muted text-foreground" 
+                  isActive
+                    ? "bg-muted text-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 }`}
               >
                 <Icon className="w-4 h-4" />
-                {item.name}
+                {t(item.key)}
               </Link>
             );
           })}
         </nav>
       </div>
 
-      <div className="p-4 border-t border-border">
+      <div className="p-4 border-t border-border space-y-2">
+        <LangToggle />
         <Link href="/dashboard" className="flex w-full items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50">
           <LogOut className="w-4 h-4" />
-          Exit Admin
+          {t("nav.exit")}
         </Link>
       </div>
     </aside>
