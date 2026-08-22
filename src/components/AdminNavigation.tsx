@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Image from "next/image";
 import { BookOpen, Users, LayoutDashboard, FileVideo, Shield, LogOut, ClipboardList } from "lucide-react";
 
 export default function AdminNavigation() {
@@ -18,8 +19,10 @@ export default function AdminNavigation() {
   return (
     <aside className="w-64 bg-card border-r border-border hidden md:flex flex-col h-screen sticky top-0">
       <div className="p-6">
-        <Link href="/manage" className="flex items-center gap-2 font-bold text-lg text-foreground">
-          <Shield className="w-5 h-5" />
+        <Link href="/manage" className="flex items-center gap-3 font-bold text-lg text-foreground tracking-tight">
+          <div className="relative w-8 h-8 rounded-md overflow-hidden shadow-sm">
+            <Image src="/logo.jpg" alt="Logo" fill className="object-cover" />
+          </div>
           <span>LMS Admin</span>
         </Link>
       </div>
