@@ -74,7 +74,7 @@ export default async function DashboardPage() {
   }).filter(Boolean) as any[];
 
   const activeCoursesCount = processedCourses.filter(c => c.status === 'active').length;
-  const firstName = profile?.full_name?.split(' ')[0] || "Student";
+  const studentName = profile?.full_name || "Student";
 
   // Fetch quiz submissions
   const { data: quizSubmissions } = await supabase
@@ -104,7 +104,7 @@ export default async function DashboardPage() {
       
       <main className="flex-1 p-8 md:p-12 overflow-y-auto">
         <header className="mb-10">
-          <h1 className="text-3xl font-bold mb-2 text-foreground">Welcome back, {firstName}!</h1>
+          <h1 className="text-3xl font-bold mb-2 text-foreground">Welcome back, {studentName}!</h1>
           <p className="text-muted-foreground text-sm">Here is what's happening with your courses today.</p>
         </header>
 
