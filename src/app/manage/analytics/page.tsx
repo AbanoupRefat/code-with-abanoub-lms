@@ -140,7 +140,10 @@ export default async function AnalyticsPage() {
                         </div>
                         <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all duration-700 ${(quiz.avg / quiz.totalPoints) >= 0.6 ? 'bg-green-500' : 'bg-amber-500'}`}
+                            className={`h-full rounded-full transition-all duration-700 ${
+                              (quiz.avg / quiz.totalPoints) >= 0.8 ? 'bg-green-500' :
+                              (quiz.avg / quiz.totalPoints) >= 0.6 ? 'bg-blue-500' : 'bg-amber-500'
+                            }`}
                             style={{ width: `${quiz.totalPoints > 0 ? Math.min(100, Math.round(quiz.avg / quiz.totalPoints * 100)) : 0}%` }}
                           />
                         </div>

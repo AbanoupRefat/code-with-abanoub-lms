@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { BookOpen, Users, LayoutDashboard, FileVideo, LogOut, ClipboardList, ClipboardCheck, BarChart2 } from "lucide-react";
+import { BookOpen, Users, LayoutDashboard, FileVideo, LogOut, ClipboardList, ClipboardCheck, BarChart2, Calendar } from "lucide-react";
 import { useLang, LangToggle } from "@/components/LangContext";
 
 export default function AdminNavigation() {
@@ -12,6 +12,7 @@ export default function AdminNavigation() {
 
   const navItems = [
     { key: "nav.overview", href: "/manage", icon: LayoutDashboard },
+    { key: "nav.calendar", href: "/manage/calendar", icon: Calendar },
     { key: "nav.students", href: "/manage/students", icon: Users },
     { key: "nav.enrollments", href: "/manage/enrollments", icon: ClipboardList },
     { key: "nav.courses", href: "/manage/courses", icon: BookOpen },

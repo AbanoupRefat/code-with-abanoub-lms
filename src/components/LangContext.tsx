@@ -150,6 +150,52 @@ const translations: Record<string, Record<Lang, string>> = {
   "playground.clearCode": { en: "Clear Code", ar: "مسح الكود" },
   "playground.copied": { en: "Copied!", ar: "تم النسخ!" },
   "nav.playground": { en: "Playground", ar: "ساحة البرمجة" },
+  "nav.calendar": { en: "Calendar", ar: "التقويم" },
+
+  // Calendar
+  "calendar.title": { en: "Curriculum Calendar", ar: "تقويم المنهج" },
+  "calendar.subtitle": { en: "Schedule of upcoming quizzes, lectures, and milestones.", ar: "جدول الاختبارات والمحاضرات والمناسبات القادمة." },
+  "calendar.adminSubtitle": { en: "Manage upcoming quizzes, lectures, and assignments manually or import from JSON.", ar: "أدر الاختبارات والمحاضرات القادمة يدويًا أو عبر استيراد JSON." },
+  "calendar.upcoming": { en: "Upcoming Events", ar: "الأحداث القادمة" },
+  "calendar.addEvent": { en: "Add Event", ar: "إضافة حدث" },
+  "calendar.eventTitle": { en: "Event Title", ar: "عنوان الحدث" },
+  "calendar.eventDesc": { en: "Description", ar: "الوصف" },
+  "calendar.eventType": { en: "Type", ar: "النوع" },
+  "calendar.eventDate": { en: "Date & Time", ar: "التاريخ والوقت" },
+  "calendar.noEvents": { en: "No events scheduled.", ar: "لا توجد أحداث مجدولة." },
+  "calendar.typeQuiz": { en: "Quiz", ar: "اختبار" },
+  "calendar.typeLecture": { en: "Lecture", ar: "محاضرة" },
+  "calendar.typeAssignment": { en: "Assignment", ar: "تكليف" },
+  "calendar.typeHoliday": { en: "Holiday", ar: "عطلة" },
+  "calendar.typeOther": { en: "Other", ar: "أخرى" },
+  "calendar.jsonImport": { en: "Bulk Import JSON", ar: "استيراد JSON" },
+  "calendar.importBtn": { en: "Import Events", ar: "استيراد الأحداث" },
+  "calendar.copyPrompt": { en: "Copy AI Prompt", ar: "نسخ موجه الذكاء الاصطناعي" },
+  "calendar.deleteConfirm": { en: "Are you sure you want to delete this event?", ar: "هل أنت متأكد من حذف هذا الحدث؟" },
+
+  // Grading UI
+  "grading.all": { en: "All", ar: "الكل" },
+  "grading.pending": { en: "Pending Review", ar: "في انتظار المراجعة" },
+  "grading.completed": { en: "Completed", ar: "مكتمل" },
+  "grading.batchSave": { en: "Submit All Grades", ar: "إرسال كل الدرجات" },
+  "grading.mcqSection": { en: "Auto-Graded (MCQ)", ar: "تصحيح تلقائي (اختيار من متعدد)" },
+  "grading.writtenSection": { en: "Manual Review (Written)", ar: "مراجعة يدوية (مكتوب)" },
+  "grading.markZero": { en: "Mark ungraded as 0", ar: "اعتبار غير المصحح صفرًا" },
+  "grading.totalScore": { en: "Total Score", ar: "الدرجة الكلية" },
+  "grading.notifyStudent": { en: "Notify Student", ar: "إبلاغ الطالب" },
+  
+  // Analytics UI
+  "analytics.myResults": { en: "My Results", ar: "نتائجي" },
+  "analytics.overallAvg": { en: "Overall Average", ar: "المتوسط العام" },
+  "analytics.quizzesTaken": { en: "Quizzes Taken", ar: "الاختبارات المنجزة" },
+  "analytics.recentActivity": { en: "Recent Activity", ar: "النشاط الأخير" },
+  "analytics.performanceTrend": { en: "Performance Trend", ar: "اتجاه الأداء" },
+  "analytics.quizHistory": { en: "Quiz History", ar: "سجل الاختبارات" },
+  "analytics.score": { en: "Score", ar: "الدرجة" },
+  "analytics.date": { en: "Date", ar: "التاريخ" },
+  "analytics.status": { en: "Status", ar: "الحالة" },
+  "analytics.best": { en: "Best Performance", ar: "أفضل أداء" },
+  "analytics.needsWork": { en: "Needs Review", ar: "يحتاج مراجعة" },
 };
 
 const LangContext = createContext<LangContextType>({

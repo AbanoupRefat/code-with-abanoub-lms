@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import GradingClient from "@/components/GradingClient";
 import { ClipboardCheck, AlertCircle, CheckCircle2 } from "lucide-react";
 
-export default async function ManageGradingPage() {
+export default async function ManageGradingPage({ searchParams }: { searchParams: Promise<{ filter?: string }> }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return redirect("/login");
@@ -28,6 +28,15 @@ export default async function ManageGradingPage() {
 
   const pendingCount = submissions?.filter(s => s.status === 'submitted').length || 0;
   const gradedCount = submissions?.filter(s => s.status === 'graded').length || 0;
+  
+  const { filter } = await searchParams;
+  const currentFilter = filter || 'pending';
+  
+  const filteredSubmissions = submissions?.filter(s => {
+    if (currentFilter === 'pending') return s.status === 'submitted';
+    if (currentFilter === 'completed') return s.status === 'graded';
+    return true; // 'all'
+  });
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -59,7 +68,7 @@ export default async function ManageGradingPage() {
             </div>
           </div>
 
-          <GradingClient submissions={(submissions as any[]) || []} />
+          <GradingClient submissions={(filteredSubmissions as any[]) || []} currentFilter={currentFilter} />
         </div>
       </main>
     </div>

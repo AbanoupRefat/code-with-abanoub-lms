@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { grantStudentAccess, revokeStudentAccess } from "@/lib/google-drive";
+import { sendEmail } from "@/lib/email";
 import { redirect } from "next/navigation";
 
 export async function createCourse(formData: FormData) {
@@ -540,6 +541,102 @@ export async function gradeWrittenAnswer(answerId: string, pointsAwarded: number
   return { success: true };
 }
 
+export async function gradeAllWrittenAnswers(submissionId: string, grades: { answerId: string, pointsAwarded: number }[]) {
+  "use server";
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  if (profile?.role !== 'admin') throw new Error("Unauthorized");
+
+  // Update all provided grades
+  for (const g of grades) {
+    const { error } = await supabase
+      .from('quiz_submission_answers')
+      .update({ points_awarded: g.pointsAwarded })
+      .eq('id', g.answerId);
+    if (error) throw new Error(`Failed to update answer ${g.answerId}: ${error.message}`);
+  }
+
+  // Recalculate final score for this submission
+  const { data: allAnswers } = await supabase
+    .from('quiz_submission_answers')
+    .select('points_awarded, question_id, quiz_questions(question_type)')
+    .eq('submission_id', submissionId);
+
+  // Check if all written questions are graded
+  const writtenAnswers = allAnswers?.filter((a: any) => a.quiz_questions?.question_type === 'written') || [];
+  const allWrittenGraded = writtenAnswers.every((a: any) => a.points_awarded !== null);
+  const totalScore = allAnswers?.reduce((sum: number, a: any) => sum + (a.points_awarded || 0), 0) || 0;
+
+  const updatePayload: any = { final_score: totalScore, score: totalScore };
+  if (allWrittenGraded) {
+    updatePayload.status = 'graded';
+    updatePayload.graded_at = new Date().toISOString();
+  }
+
+  await supabase.from('quiz_submissions').update(updatePayload).eq('id', submissionId);
+  revalidatePath('/manage/grading');
+  return { success: true };
+}
+
+export async function notifyStudentQuizGraded(submissionId: string) {
+  "use server";
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+  
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  if (profile?.role !== 'admin') throw new Error("Unauthorized");
+
+  const { data: submission } = await supabase
+    .from('quiz_submissions')
+    .select(`
+      id, score, final_score, 
+      profiles ( email, full_name ),
+      quizzes ( title, quiz_questions(points) )
+    `)
+    .eq('id', submissionId)
+    .single();
+
+  if (!submission) throw new Error("Submission not found");
+  
+  const studentEmail = (submission.profiles as any)?.email;
+  const studentName = (submission.profiles as any)?.full_name || "Student";
+  const quizTitle = (submission.quizzes as any)?.title || "Quiz";
+  
+  if (!studentEmail) throw new Error("Student email not found");
+
+  const totalPts = (submission.quizzes as any)?.quiz_questions?.reduce((s: number, q: any) => s + q.points, 0) || 0;
+  const score = submission.final_score ?? submission.score;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
+      <h2 style="color: #3b82f6;">Your Quiz Has Been Graded! 🎉</h2>
+      <p>Hello ${studentName},</p>
+      <p>Your recent submission for <strong>${quizTitle}</strong> has been graded by the instructor.</p>
+      <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center;">
+        <p style="margin: 0; font-size: 18px;">Score: <strong>${score} / ${totalPts}</strong></p>
+      </div>
+      <p>Please log in to your Student Portal and visit the <strong>My Results</strong> page to review your detailed feedback and correct answers.</p>
+      <br/>
+      <p style="font-size: 12px; color: #6b7280;">This is an automated notification from Code with Abanoub LMS.</p>
+    </div>
+  `;
+
+  const result = await sendEmail({
+    to: studentEmail,
+    subject: `Quiz Graded: ${quizTitle}`,
+    html,
+  });
+
+  if (!result.success) {
+    throw new Error(result.error);
+  }
+
+  return { success: true };
+}
+
 // ─── Activity Tracking ────────────────────────────────────────────────────────
 
 export async function updateLastActive() {
@@ -548,3 +645,113 @@ export async function updateLastActive() {
   if (!user) return;
   await supabase.from('profiles').update({ last_active_at: new Date().toISOString() }).eq('id', user.id);
 }
+
+// ─── Calendar Actions ────────────────────────────────────────────────────────
+
+export async function createCalendarEvent(data: {
+  title: string;
+  description?: string;
+  event_type: 'quiz' | 'lecture' | 'assignment' | 'holiday' | 'other';
+  event_date: string;
+  course_id?: string;
+  quiz_id?: string;
+}) {
+  const supabase = await createClient();
+  const { error } = await supabase.from('calendar_events').insert([
+    {
+      title: data.title,
+      description: data.description || null,
+      event_type: data.event_type,
+      event_date: data.event_date,
+      course_id: data.course_id || null,
+      quiz_id: data.quiz_id || null,
+    }
+  ]);
+  
+  if (error) {
+    console.error("Error creating calendar event:", error);
+    throw new Error(error.message);
+  }
+
+  // Notify students
+  try {
+    const { data: students } = await supabase.from('profiles').select('email').eq('role', 'student');
+    if (students && students.length > 0) {
+      const bccEmails = students.map(s => s.email).filter(e => e).join(',');
+      if (bccEmails) {
+        const html = `
+          <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
+            <h2 style="color: #3b82f6;">New Event Scheduled: ${data.title}</h2>
+            <p>A new event has been added to your LMS Calendar.</p>
+            <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <p><strong>Type:</strong> ${data.event_type.toUpperCase()}</p>
+              <p><strong>Date:</strong> ${new Date(data.event_date).toLocaleString()}</p>
+              ${data.description ? `<p><strong>Description:</strong> ${data.description}</p>` : ''}
+            </div>
+            <p>Please log in to the LMS and check your Calendar for more details.</p>
+            <br/>
+            <p style="font-size: 12px; color: #6b7280;">This is an automated notification from Code with Abanoub LMS.</p>
+          </div>
+        `;
+        
+        await sendEmail({
+          bcc: bccEmails,
+          subject: `New Calendar Event: ${data.title}`,
+          html,
+        });
+      }
+    }
+  } catch (emailErr) {
+    console.error("Failed to send calendar notifications:", emailErr);
+  }
+  
+  revalidatePath('/manage/calendar');
+  revalidatePath('/calendar');
+}
+
+export async function deleteCalendarEvent(id: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from('calendar_events').delete().eq('id', id);
+  
+  if (error) {
+    console.error("Error deleting calendar event:", error);
+    throw new Error(error.message);
+  }
+  
+  revalidatePath('/manage/calendar');
+  revalidatePath('/calendar');
+}
+
+export async function importCalendarEventsFromJson(jsonString: string) {
+  const supabase = await createClient();
+  try {
+    const events = JSON.parse(jsonString);
+    if (!Array.isArray(events)) {
+      throw new Error("JSON must be an array of events.");
+    }
+    
+    const formattedEvents = events.map(e => ({
+      title: e.title,
+      description: e.description || null,
+      event_type: e.event_type || 'other',
+      event_date: e.event_date,
+      course_id: e.course_id || null,
+      quiz_id: e.quiz_id || null,
+    }));
+    
+    const { error } = await supabase.from('calendar_events').insert(formattedEvents);
+    
+    if (error) {
+       console.error("Bulk insert error:", error);
+       throw new Error(error.message);
+    }
+    
+    revalidatePath('/manage/calendar');
+    revalidatePath('/calendar');
+    return { success: true };
+  } catch (error: any) {
+    console.error("Failed to import calendar JSON:", error);
+    return { success: false, error: error.message };
+  }
+}
+
