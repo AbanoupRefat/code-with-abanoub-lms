@@ -24,20 +24,20 @@ export default function AdminNavigation() {
   return (
     <>
       <style>{`
-        body { padding-bottom: 7rem !important; }
+        body { padding-bottom: 6rem !important; }
         .admin-sidebar { display: none !important; } 
       `}</style>
       
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card/80 backdrop-blur-2xl border border-border shadow-2xl rounded-full px-4 py-3 flex items-center gap-2 sm:gap-6 w-max max-w-[95vw] overflow-x-auto no-scrollbar transition-all hover:bg-card/90">
+      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-card/85 backdrop-blur-2xl border border-border shadow-2xl rounded-full px-2 sm:px-4 py-2 sm:py-3 flex items-center gap-1 sm:gap-3 w-max max-w-[97vw] transition-all hover:bg-card/95">
         
-        {/* Logo (Optional) */}
-        <Link href="/manage" className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full overflow-hidden shadow-sm hover:opacity-80 transition-opacity flex-shrink-0 border border-border">
-          <Image src="/logo.jpg" alt="Logo" width={40} height={40} className="object-cover" />
+        {/* Logo — desktop only */}
+        <Link href="/manage" className="hidden sm:flex items-center justify-center w-8 h-8 rounded-full overflow-hidden shadow-sm hover:opacity-80 transition-opacity flex-shrink-0 border border-border">
+          <Image src="/logo.jpg" alt="Logo" width={32} height={32} className="object-cover" />
         </Link>
-        <div className="w-px h-8 bg-border hidden sm:block" />
+        <div className="w-px h-6 bg-border hidden sm:block" />
 
         {/* Navigation Items */}
-        <div className="flex items-center gap-1 sm:gap-2 border-r border-border pr-2 sm:pr-6">
+        <div className="flex items-center gap-0.5 sm:gap-1 border-r border-border pr-2 sm:pr-4">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -47,15 +47,15 @@ export default function AdminNavigation() {
                 key={item.key}
                 href={item.href}
                 title={t(item.key)}
-                className={`relative flex flex-col items-center justify-center p-3 rounded-full transition-all group ${
+                className={`relative flex flex-col items-center justify-center p-1.5 sm:p-2.5 rounded-full transition-all group ${
                   isActive
                     ? "text-primary"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 }`}
               >
-                <Icon className={`w-6 h-6 transition-transform group-hover:scale-110 ${isActive ? "scale-110" : ""}`} />
+                <Icon className={`w-5 h-5 transition-transform group-hover:scale-110 ${isActive ? "scale-110" : ""}`} />
                 {isActive && (
-                  <span className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-primary" />
+                  <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-primary" />
                 )}
               </Link>
             );
@@ -63,7 +63,7 @@ export default function AdminNavigation() {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2 sm:gap-4 pl-0 sm:pl-2">
+        <div className="flex items-center gap-1 sm:gap-3 pl-0">
           {/* Lang Toggle */}
           <div className="hidden sm:block">
             <LangToggle />
@@ -72,9 +72,9 @@ export default function AdminNavigation() {
           <Link 
             href="/dashboard" 
             title={t("nav.exit")}
-            className="flex items-center justify-center p-3 rounded-full transition-all text-muted-foreground hover:text-foreground hover:bg-muted/50 group"
+            className="flex items-center justify-center p-1.5 sm:p-2.5 rounded-full transition-all text-muted-foreground hover:text-foreground hover:bg-muted/50 group"
           >
-            <LogOut className="w-6 h-6 transition-transform group-hover:scale-110" />
+            <LogOut className="w-5 h-5 transition-transform group-hover:scale-110" />
           </Link>
         </div>
       </nav>

@@ -29,7 +29,6 @@ export default async function PlaygroundPage() {
           <div className="flex items-center gap-2 font-bold text-foreground">
             <Code2 className="w-5 h-5 text-primary" />
             <span>Code Playground</span>
-            <span className="text-muted-foreground font-normal"> / ساحة البرمجة</span>
           </div>
         </div>
         <LangToggle />

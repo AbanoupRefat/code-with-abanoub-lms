@@ -49,34 +49,33 @@ export default function PlaygroundClient() {
   const [isRunning, setIsRunning] = useState(false);
   const [pyodideStatus, setPyodideStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [copied, setCopied] = useState(false);
-  const pyodideRef = useRef<any>(null);
-  const workerRef = useRef<Worker | null>(null);
+  const jsWorkerRef = useRef<Worker | null>(null);
+  const pyWorkerRef = useRef<Worker | null>(null);
   const outputRef = useRef<HTMLDivElement>(null);
 
-  // Load Pyodide lazily when Python is selected
+  // Pre-initialize Pyodide Web Worker in the background as soon as component mounts
   useEffect(() => {
-    if (language !== "python" || pyodideRef.current || pyodideStatus !== "idle") return;
-    setPyodideStatus("loading");
+    if (typeof window === "undefined") return;
 
-    const script = document.createElement("script");
-    script.src = "https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.js";
-    script.onload = async () => {
-      try {
-        // @ts-ignore
-        const pyodide = await (window as any).loadPyodide({
-          indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.5/full/",
-        });
-        pyodideRef.current = pyodide;
-        setPyodideStatus("ready");
-      } catch {
-        setPyodideStatus("error");
+    const worker = new Worker("/py-worker.js");
+    pyWorkerRef.current = worker;
+
+    worker.onmessage = (e) => {
+      const { type, status } = e.data;
+      if (type === "status") {
+        setPyodideStatus(status);
       }
     };
-    script.onerror = () => setPyodideStatus("error");
-    document.head.appendChild(script);
-  }, [language, pyodideStatus]);
 
-  // Switch language - update editor content to default
+    // Kick off loading immediately in the background
+    worker.postMessage({ type: "init" });
+    setPyodideStatus("loading");
+
+    return () => {
+      worker.terminate();
+    };
+  }, []);
+
   const handleLanguageChange = (lang: Language) => {
     setLanguage(lang);
     setCode(DEFAULT_CODE[lang]);
@@ -85,10 +84,9 @@ export default function PlaygroundClient() {
 
   const runJavaScript = () => {
     return new Promise<LogEntry[]>((resolve) => {
-      // Terminate any previous worker
-      workerRef.current?.terminate();
+      jsWorkerRef.current?.terminate();
       const worker = new Worker("/js-worker.js");
-      workerRef.current = worker;
+      jsWorkerRef.current = worker;
 
       const timeout = setTimeout(() => {
         worker.terminate();
@@ -99,9 +97,7 @@ export default function PlaygroundClient() {
         clearTimeout(timeout);
         const { success, logs: workerLogs, error } = e.data;
         const result: LogEntry[] = workerLogs || [];
-        if (!success && error) {
-          result.push({ type: "error", message: error });
-        }
+        if (!success && error) result.push({ type: "error", message: error });
         resolve(result);
       };
 
@@ -114,41 +110,38 @@ export default function PlaygroundClient() {
     });
   };
 
-  const runPython = async (): Promise<LogEntry[]> => {
-    if (!pyodideRef.current) {
-      return [{ type: "error", message: "Python runtime not ready yet." }];
-    }
-
-    const pyodide = pyodideRef.current;
-    const result: LogEntry[] = [];
-
-    try {
-      // Redirect stdout to capture print() output
-      await pyodide.runPythonAsync(`
-import sys, io
-_stdout_capture = io.StringIO()
-sys.stdout = _stdout_capture
-sys.stderr = _stdout_capture
-`);
-      await pyodide.runPythonAsync(code);
-      const output: string = await pyodide.runPythonAsync(`
-_out = _stdout_capture.getvalue()
-sys.stdout = sys.__stdout__
-sys.stderr = sys.__stderr__
-_out
-`);
-      if (output) {
-        output.trim().split("\n").forEach((line) => {
-          result.push({ type: "log", message: line });
-        });
+  const runPython = (): Promise<LogEntry[]> => {
+    return new Promise((resolve) => {
+      if (!pyWorkerRef.current || pyodideStatus !== "ready") {
+        resolve([{ type: "error", message: "Python runtime is still loading. Please wait a moment and try again." }]);
+        return;
       }
-    } catch (err: any) {
-      // Restore stdout even on error
-      try { await pyodide.runPythonAsync(`sys.stdout = sys.__stdout__; sys.stderr = sys.__stderr__`); } catch {}
-      result.push({ type: "error", message: err.message || String(err) });
-    }
 
-    return result;
+      const timeout = setTimeout(() => {
+        resolve([{ type: "error", message: "Python execution timed out (10s limit). Check for infinite loops." }]);
+      }, 10000);
+
+      const originalOnMessage = pyWorkerRef.current.onmessage;
+      pyWorkerRef.current.onmessage = (e) => {
+        // Route status messages normally
+        if (e.data.type === "status") {
+          setPyodideStatus(e.data.status);
+          return;
+        }
+        if (e.data.type === "result") {
+          clearTimeout(timeout);
+          // Restore original message handler
+          if (pyWorkerRef.current) pyWorkerRef.current.onmessage = originalOnMessage;
+
+          const { success, logs: workerLogs, error } = e.data;
+          const result: LogEntry[] = workerLogs || [];
+          if (!success && error) result.push({ type: "error", message: error });
+          resolve(result);
+        }
+      };
+
+      pyWorkerRef.current.postMessage({ type: "run", code });
+    });
   };
 
   const handleRun = async () => {
@@ -166,13 +159,12 @@ _out
     ]);
     setIsRunning(false);
 
-    // Scroll output to top
     setTimeout(() => outputRef.current?.scrollTo({ top: 0 }), 50);
   };
 
   const handleClear = () => setLogs([]);
   const handleReset = () => { setCode(DEFAULT_CODE[language]); setLogs([]); };
-  const handleClearCode = () => { setCode(""); };
+  const handleClearCode = () => setCode("");
   const handleCopy = async () => {
     await navigator.clipboard.writeText(code);
     setCopied(true);
@@ -190,12 +182,12 @@ _out
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-10rem)] gap-0 rounded-2xl overflow-hidden border border-border shadow-2xl bg-[#1e1e1e]">
+    <div className="flex flex-col h-[calc(100dvh-7rem)] md:h-[calc(100vh-10rem)] gap-0 rounded-2xl overflow-hidden border border-border shadow-2xl bg-[#1e1e1e]">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-[#252526] border-b border-[#3e3e42] flex-shrink-0">
-        <div className="flex items-center gap-3">
-          {/* Traffic lights */}
-          <div className="flex gap-1.5 me-2">
+      <div className="flex items-center justify-between px-3 py-2 bg-[#252526] border-b border-[#3e3e42] flex-shrink-0 gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          {/* Traffic lights — hidden on mobile */}
+          <div className="hidden sm:flex gap-1.5 me-2">
             <div className="w-3 h-3 rounded-full bg-red-500/80" />
             <div className="w-3 h-3 rounded-full bg-amber-500/80" />
             <div className="w-3 h-3 rounded-full bg-green-500/80" />
@@ -206,32 +198,33 @@ _out
               <button
                 key={lang}
                 onClick={() => handleLanguageChange(lang)}
-                className={`px-3 py-1 text-xs font-semibold rounded transition-all ${
+                className={`px-2.5 py-1 text-xs font-semibold rounded transition-all ${
                   language === lang
                     ? "bg-primary text-primary-foreground"
                     : "text-[#858585] hover:text-white"
                 }`}
               >
-                {lang === "javascript" ? "JavaScript" : "Python"}
+                {lang === "javascript" ? "JS" : "Py"}
               </button>
             ))}
           </div>
-          {/* Python loading indicator */}
+          {/* Python status indicator */}
           {language === "python" && pyodideStatus !== "ready" && (
             <div className="flex items-center gap-1.5 text-xs text-amber-400">
               {pyodideStatus === "loading" && <Loader2 className="w-3 h-3 animate-spin" />}
               {pyodideStatus === "error" && <AlertCircle className="w-3 h-3" />}
-              <span>{pyodideStatus === "loading" ? t("playground.loading") : "Failed to load Python"}</span>
+              <span className="hidden sm:inline">{pyodideStatus === "loading" ? t("playground.loading") : "Failed"}</span>
             </div>
           )}
           {language === "python" && pyodideStatus === "ready" && (
             <span className="text-xs text-green-400/70 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" /> Python Ready
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+              <span className="hidden sm:inline">Python Ready</span>
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           <button onClick={handleCopy} title={t("playground.copyCode")} className="p-1.5 rounded text-[#858585] hover:text-white transition-colors">
             {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
           </button>
@@ -244,20 +237,20 @@ _out
           <button
             onClick={handleRun}
             disabled={isRunning || (language === "python" && pyodideStatus !== "ready")}
-            className="flex items-center gap-2 px-4 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-bold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isRunning
-              ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t("playground.running")}</>
-              : <><Play className="w-3.5 h-3.5" /> {t("playground.run")}</>
+              ? <><Loader2 className="w-3 h-3 animate-spin" /> <span className="hidden sm:inline">{t("playground.running")}</span></>
+              : <><Play className="w-3 h-3" /> <span>{t("playground.run")}</span></>
             }
           </button>
         </div>
       </div>
 
-      {/* Split Pane */}
+      {/* Split Pane — vertical on mobile, horizontal on large screens */}
       <div className="flex flex-1 overflow-hidden flex-col lg:flex-row">
         {/* Code Editor */}
-        <div className="flex-1 overflow-hidden border-b lg:border-b-0 lg:border-r border-[#3e3e42]">
+        <div className="flex-1 overflow-hidden border-b lg:border-b-0 lg:border-r border-[#3e3e42] min-h-0" style={{ flexBasis: "60%" }}>
           <Editor
             height="100%"
             language={language}
@@ -265,23 +258,24 @@ _out
             onChange={(val) => setCode(val ?? "")}
             theme="vs-dark"
             options={{
-              fontSize: 14,
+              fontSize: 13,
               fontFamily: "'Fira Code', 'Cascadia Code', monospace",
               fontLigatures: true,
               minimap: { enabled: false },
               scrollBeyondLastLine: false,
-              padding: { top: 16, bottom: 16 },
+              padding: { top: 12, bottom: 12 },
               lineNumbersMinChars: 3,
               renderLineHighlight: "gutter",
               smoothScrolling: true,
               cursorBlinking: "smooth",
               bracketPairColorization: { enabled: true },
+              wordWrap: "on",
             }}
           />
         </div>
 
         {/* Terminal Output */}
-        <div className="w-full lg:w-80 xl:w-96 flex flex-col bg-[#0d1117] flex-shrink-0">
+        <div className="flex flex-col bg-[#0d1117] flex-shrink-0 lg:w-80 xl:w-96" style={{ minHeight: "35%" }}>
           {/* Terminal header */}
           <div className="flex items-center justify-between px-4 py-2 bg-[#161b22] border-b border-[#30363d] flex-shrink-0">
             <div className="flex items-center gap-2 text-sm font-semibold text-[#8b949e]">

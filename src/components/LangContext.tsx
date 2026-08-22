@@ -135,7 +135,7 @@ const translations: Record<string, Record<Lang, string>> = {
   "students.never": { en: "Never", ar: "لم يسجل دخول" },
 
   // Playground
-  "playground.title": { en: "Code Playground", ar: "ساحة البرمجة" },
+  "playground.title": { en: "Code Playground", ar: "الملعب البرمجي" },
   "playground.subtitle": { en: "Write and run Python or JavaScript directly in your browser.", ar: "اكتب وشغّل كودًا بلغة Python أو JavaScript مباشرةً في متصفحك." },
   "playground.run": { en: "Run Code", ar: "تشغيل الكود" },
   "playground.running": { en: "Running...", ar: "جاري التشغيل..." },
@@ -149,7 +149,7 @@ const translations: Record<string, Record<Lang, string>> = {
   "playground.copyCode": { en: "Copy Code", ar: "نسخ الكود" },
   "playground.clearCode": { en: "Clear Code", ar: "مسح الكود" },
   "playground.copied": { en: "Copied!", ar: "تم النسخ!" },
-  "nav.playground": { en: "Playground", ar: "ساحة البرمجة" },
+  "nav.playground": { en: "Playground", ar: "الملعب" },
   "nav.calendar": { en: "Calendar", ar: "التقويم" },
 
   // Calendar
