@@ -20,13 +20,13 @@ export default function EnrollmentChart({ data }: { data: { date: string, enroll
             dataKey="date" 
             axisLine={false} 
             tickLine={false} 
-            tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} 
+            tick={{ fontSize: 12, fill: "#888888" }} 
             dy={10}
           />
           <YAxis 
             axisLine={false} 
             tickLine={false} 
-            tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} 
+            tick={{ fontSize: 12, fill: "#888888" }} 
             allowDecimals={false}
           />
           <Tooltip 

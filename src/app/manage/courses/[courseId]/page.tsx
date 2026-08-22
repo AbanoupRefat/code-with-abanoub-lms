@@ -1,7 +1,11 @@
 import AdminNavigation from "@/components/AdminNavigation";
-import { createUnit, createLesson } from "../../actions";
+import { createUnit, updateCourse, deleteCourse } from "../../actions";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
+import ServiceAccountHelper from "@/components/ServiceAccountHelper";
+import SubmitButton from "@/components/SubmitButton";
+import CourseManagerTabs from "@/components/CourseManagerTabs";
+import CurriculumTab from "@/components/CurriculumTab";
 
 export default async function ManageCourseDetailsPage({ params }: { params: Promise<{ courseId: string }> }) {
   const supabase = await createClient();
@@ -23,85 +27,67 @@ export default async function ManageCourseDetailsPage({ params }: { params: Prom
     return redirect("/manage/courses");
   }
 
+  const settingsContent = (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      {course.drive_folder_id && (
+        <ServiceAccountHelper email={process.env.GOOGLE_CLIENT_EMAIL} />
+      )}
+      <div className="clean-panel p-6 rounded-lg space-y-4 shadow-sm border border-border">
+        <h2 className="text-xl font-bold text-foreground mb-4">Course Settings</h2>
+        <form action={updateCourse.bind(null, courseId)} className="space-y-5">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Course Title</label>
+            <input type="text" name="title" defaultValue={course.title} required className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Description</label>
+            <textarea name="description" defaultValue={course.description} rows={4} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Thumbnail URL</label>
+            <input type="text" name="thumbnail_url" defaultValue={course.thumbnail_url || ""} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Google Drive Folder ID</label>
+            <input type="text" name="drive_folder_id" defaultValue={course.drive_folder_id || ""} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+          </div>
+          <div className="flex items-center gap-2 pt-2 pb-4">
+            <input type="checkbox" name="is_published" id="is_published" defaultChecked={course.is_published} className="w-4 h-4 rounded border-border" />
+            <label htmlFor="is_published" className="text-sm font-medium text-foreground">Publish Course Immediately</label>
+          </div>
+          <div className="flex justify-between items-center border-t border-border pt-4 mt-6">
+            <SubmitButton 
+              variant="destructive" 
+              label="Delete Course" 
+              loadingLabel="Deleting..." 
+              formAction={async () => {
+                "use server";
+                await deleteCourse(courseId);
+              }}
+            />
+            <SubmitButton label="Save Changes" loadingLabel="Saving..." />
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+
+  const curriculumContent = <CurriculumTab courseId={courseId} units={course.units || []} />;
+
   return (
     <div className="flex min-h-screen bg-background">
       <AdminNavigation />
       <main className="flex-1 p-8 md:p-12 overflow-y-auto">
-        <h1 className="text-3xl font-bold mb-2 text-foreground">{course.title}</h1>
-        <p className="text-muted-foreground mb-8 text-sm">Manage curriculum</p>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="space-y-6">
-            <h2 className="text-xl font-bold text-foreground">Add Unit</h2>
-            <form action={createUnit.bind(null, courseId)} className="clean-panel p-4 rounded-lg space-y-4">
-              <input type="text" name="title" placeholder="Unit Title" required className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
-              <input type="number" name="order_index" placeholder="Order (e.g. 1)" required className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
-              <button type="submit" className="w-full bg-primary text-primary-foreground px-4 py-2 rounded-md hover:opacity-90 transition-opacity">Create Unit</button>
-            </form>
-            
-            <h2 className="text-xl font-bold text-foreground mt-8">Add Lesson</h2>
-            <form action={async (formData) => {
-              "use server";
-              const unitId = formData.get("unit_id") as string;
-              if(unitId) await createLesson(unitId, courseId, formData);
-            }} className="clean-panel p-4 rounded-lg space-y-4">
-              <select name="unit_id" required className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground">
-                <option value="">Select Unit...</option>
-                {course.units?.map((u: any) => <option key={u.id} value={u.id}>{u.title}</option>)}
-              </select>
-              <input type="text" name="title" placeholder="Lesson Title" required className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
-              <input type="text" name="video_provider" placeholder="Provider (youtube, vimeo)" className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
-              <input type="text" name="video_url" placeholder="Video URL" className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
-              <input type="number" name="order_index" placeholder="Order (e.g. 1)" required className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
-              <button type="submit" className="w-full bg-primary text-primary-foreground px-4 py-2 rounded-md hover:opacity-90 transition-opacity">Create Lesson</button>
-            </form>
-
-            <h2 className="text-xl font-bold text-foreground mt-8">Add Quiz</h2>
-            <form action={async (formData) => {
-              "use server";
-              const { createQuiz } = await import('../../actions');
-              const unitId = formData.get("unit_id") as string;
-              if(unitId) await createQuiz(unitId, courseId, formData);
-            }} className="clean-panel p-4 rounded-lg space-y-4">
-              <select name="unit_id" required className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground">
-                <option value="">Select Unit...</option>
-                {course.units?.map((u: any) => <option key={u.id} value={u.id}>{u.title}</option>)}
-              </select>
-              <input type="text" name="title" placeholder="Quiz Title" required className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
-              <textarea name="description" placeholder="Instructions / Description" rows={2} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
-              <input type="number" name="order_index" placeholder="Order (e.g. 99)" required className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
-              <label className="flex items-center gap-2 text-sm text-foreground">
-                <input type="checkbox" name="show_grade_immediately" className="rounded border-border bg-background" />
-                Show grade immediately after submission (uncheck to hide)
-              </label>
-              <button type="submit" className="w-full border border-primary text-primary px-4 py-2 rounded-md hover:bg-primary hover:text-primary-foreground transition-colors">Create Quiz</button>
-            </form>
-          </div>
+        <div className="max-w-5xl mx-auto">
+          <header className="mb-8">
+            <p className="text-primary text-sm font-semibold tracking-wider uppercase mb-1">Course Management</p>
+            <h1 className="text-3xl font-bold text-foreground">{course.title}</h1>
+          </header>
           
-          <div>
-            <h2 className="text-xl font-bold text-foreground mb-4">Curriculum</h2>
-            <div className="space-y-4">
-              {course.units?.slice().sort((a:any,b:any)=>a.order_index-b.order_index).map((unit: any) => (
-                <div key={unit.id} className="clean-panel p-4 rounded-lg">
-                  <h3 className="font-bold text-foreground">{unit.title}</h3>
-                  <div className="mt-4 space-y-2 pl-4 border-l-2 border-border">
-                    {unit.lessons?.slice().sort((a:any,b:any)=>a.order_index-b.order_index).map((lesson: any) => (
-                      <div key={lesson.id} className="text-sm text-muted-foreground flex items-center gap-2">
-                        <span className="w-4 h-4 bg-muted rounded-sm flex items-center justify-center text-[10px]">{lesson.order_index}</span>
-                        {lesson.title}
-                      </div>
-                    ))}
-                    {unit.quizzes?.slice().sort((a:any,b:any)=>a.order_index-b.order_index).map((quiz: any) => (
-                      <div key={quiz.id} className="text-sm text-primary font-medium flex items-center gap-2 mt-2">
-                        <span className="w-4 h-4 bg-primary/20 text-primary rounded-sm flex items-center justify-center text-[10px]">{quiz.order_index}</span>
-                        [Quiz] {quiz.title}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <CourseManagerTabs 
+            settingsContent={settingsContent} 
+            curriculumContent={curriculumContent} 
+          />
         </div>
       </main>
     </div>

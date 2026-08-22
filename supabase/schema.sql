@@ -71,7 +71,7 @@ ALTER TABLE enrollments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE lesson_progress ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: Users can read their own profile, Admins can read all.
-CREATE POLICY "Users can read own profile" ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Anyone authenticated can read profiles" ON profiles FOR SELECT USING (auth.uid() IS NOT NULL);
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
 
 -- Courses: Everyone can read published courses.
@@ -202,3 +202,16 @@ CREATE POLICY "Admins can manage quiz questions" ON quiz_questions FOR ALL USING
 CREATE POLICY "Admins can manage quiz options" ON quiz_options FOR ALL USING (is_admin());
 CREATE POLICY "Admins can manage quiz submissions" ON quiz_submissions FOR ALL USING (is_admin());
 CREATE POLICY "Students can insert own enrollments" ON enrollments FOR INSERT WITH CHECK (auth.uid() = student_id);
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS drive_folder_id TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS email TEXT;
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (id, full_name, avatar_url, email)
+  VALUES (new.id, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'avatar_url', new.email);
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Backfill existing users
+UPDATE profiles SET email = (SELECT email FROM auth.users WHERE auth.users.id = profiles.id);

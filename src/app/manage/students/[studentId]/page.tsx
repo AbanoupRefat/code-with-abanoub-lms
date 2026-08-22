@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { enrollStudent, unenrollStudent } from "../../actions";
 
-export default async function StudentManagementPage({ params }: { params: { studentId: string } }) {
+export default async function StudentManagementPage({ params }: { params: Promise<{ studentId: string }> }) {
   const supabase = await createClient();
-  const { studentId } = params;
+  const { studentId } = await params;
   
   // Ensure the user is an admin
   const { data: { user } } = await supabase.auth.getUser();

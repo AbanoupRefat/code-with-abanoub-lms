@@ -2,6 +2,8 @@ import AdminNavigation from "@/components/AdminNavigation";
 import { createCourse } from "../../actions";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
+import ServiceAccountHelper from "@/components/ServiceAccountHelper";
+import SubmitButton from "@/components/SubmitButton";
 
 export default async function NewCoursePage() {
   const supabase = await createClient();
@@ -30,11 +32,16 @@ export default async function NewCoursePage() {
               <label className="block text-sm font-medium mb-1 text-foreground">Thumbnail URL</label>
               <input type="text" name="thumbnail_url" className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
             </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 text-foreground">Google Drive Folder ID (Optional)</label>
+              <input type="text" name="drive_folder_id" className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" placeholder="e.g. 1A2B3C4D5E6F7G8H9I0J" />
+              <ServiceAccountHelper email={process.env.GOOGLE_CLIENT_EMAIL} />
+            </div>
             <div className="flex items-center gap-2">
               <input type="checkbox" name="is_published" id="is_published" />
               <label htmlFor="is_published" className="text-sm text-foreground">Publish immediately</label>
             </div>
-            <button type="submit" className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium hover:opacity-90 transition-opacity">Create Course</button>
+            <SubmitButton label="Create Course" loadingLabel="Creating..." className="w-full" />
           </form>
         </div>
       </main>
