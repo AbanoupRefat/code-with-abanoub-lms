@@ -27,62 +27,70 @@ export default function Navigation({ profile }: { profile: any }) {
   const { t } = useLang();
 
   return (
-    <aside className="w-64 bg-card border-r border-border hidden md:flex flex-col h-screen sticky top-0">
-      <div className="p-6">
-        <Link href="/dashboard" className="flex items-center gap-2 font-bold text-lg text-foreground">
-          <BookOpen className="w-5 h-5" />
-          <span>LMS Portal</span>
-        </Link>
-      </div>
+    <>
+      {/* Inject padding so content doesn't hide behind the floating navbar */}
+      <style>{`
+        body { padding-bottom: 7rem !important; }
+        .admin-sidebar { display: none !important; } 
+      `}</style>
       
-      <div className="px-4 py-2 flex-1">
-        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">
-          Menu
-        </div>
-        <nav className="space-y-1">
+      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card/80 backdrop-blur-2xl border border-border shadow-2xl rounded-full px-4 py-3 flex items-center gap-2 sm:gap-6 w-max max-w-[95vw] overflow-x-auto no-scrollbar transition-all hover:bg-card/90">
+        
+        {/* Navigation Items */}
+        <div className="flex items-center gap-1 sm:gap-2 border-r border-border pr-2 sm:pr-6">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
             
             return (
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium ${
+                title={item.name}
+                className={`relative flex flex-col items-center justify-center p-3 rounded-full transition-all group ${
                   isActive 
-                    ? "bg-muted text-foreground" 
+                    ? "text-primary" 
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 }`}
               >
-                <Icon className="w-4 h-4" />
-                {item.name}
+                <Icon className={`w-6 h-6 transition-transform group-hover:scale-110 ${isActive ? "scale-110" : ""}`} />
+                {isActive && (
+                  <span className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-primary" />
+                )}
               </Link>
             );
           })}
-        </nav>
-      </div>
-
-      <div className="p-4 border-t border-border">
-        <div className="flex items-center gap-3 px-3 py-2 mb-2">
-          <div className="w-8 h-8 rounded-full bg-muted border border-border flex items-center justify-center text-foreground font-medium text-sm">
-            {initial}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{profile?.full_name || "Student"}</p>
-            <p className="text-xs text-muted-foreground truncate">{profile?.role || "student"}</p>
-          </div>
         </div>
-        <div className="space-y-2">
-          <LangToggle />
+
+        {/* User Profile & Actions */}
+        <div className="flex items-center gap-2 sm:gap-4 pl-0 sm:pl-2">
+          {/* Profile Badge */}
+          <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity" title="Profile">
+            <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold shadow-sm">
+              {initial}
+            </div>
+            <div className="hidden sm:block text-left mr-2">
+              <p className="text-sm font-bold text-foreground leading-none">{profile?.full_name?.split(' ')[0] || "Student"}</p>
+            </div>
+          </Link>
+          
+          <div className="w-px h-8 bg-border hidden sm:block" />
+
+          {/* Lang Toggle */}
+          <div className="hidden sm:block">
+            <LangToggle />
+          </div>
+
+          {/* Sign Out */}
           <button 
             onClick={handleSignOut}
-            className="flex w-full items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 cursor-pointer"
+            title="Sign Out"
+            className="flex items-center justify-center p-3 rounded-full transition-all text-muted-foreground hover:text-red-500 hover:bg-red-500/10 group cursor-pointer"
           >
-            <LogOut className="w-4 h-4" />
-            Sign Out
+            <LogOut className="w-6 h-6 transition-transform group-hover:scale-110" />
           </button>
         </div>
-      </div>
-    </aside>
+      </nav>
+    </>
   );
 }
