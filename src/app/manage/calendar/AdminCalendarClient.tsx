@@ -26,6 +26,7 @@ export default function AdminCalendarClient({ events, courses, quizzes }: { even
     course_id: "",
     quiz_id: ""
   });
+  const [isStartingInstant, setIsStartingInstant] = useState(false);
 
   const promptText = `Generate a curriculum calendar in JSON format. Return an array of objects.
 Requirements:
@@ -91,6 +92,34 @@ Example output:
     setIsAdding(false);
   };
 
+  const handleInstantLive = async () => {
+    setIsStartingInstant(true);
+    try {
+      const now = new Date();
+      const title = `Live Class (${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`;
+      const roomName = 'room_' + Date.now() + Math.random().toString(36).substring(7);
+      
+      const res = await createCalendarEvent({
+        title,
+        description: "Instant Live Class started by Admin",
+        event_type: "live_session",
+        event_date: now.toISOString(),
+        meeting_url: roomName
+      });
+
+      if (res && res.success) {
+        // Fetch created event ID or redirect to the most recent live event
+        router.refresh();
+        alert("Instant Live Session started! Email notifications sent to all students.");
+      } else {
+        alert("Error starting session: " + (res?.error || "Unknown error"));
+      }
+    } catch (err: any) {
+      alert("Error starting instant session: " + err.message);
+    }
+    setIsStartingInstant(false);
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm(t("calendar.deleteConfirm"))) return;
     await deleteCalendarEvent(id);
@@ -111,9 +140,25 @@ Example output:
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold mb-2 text-foreground">{t("calendar.title")}</h1>
-        <p className="text-muted-foreground text-sm">{t("calendar.adminSubtitle")}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold mb-2 text-foreground">{t("calendar.title")}</h1>
+          <p className="text-muted-foreground text-sm">{t("calendar.adminSubtitle")}</p>
+        </div>
+        <button
+          onClick={handleInstantLive}
+          disabled={isStartingInstant}
+          className="inline-flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white font-bold px-5 py-3 rounded-xl transition-all shadow-lg shadow-rose-600/20 disabled:opacity-50 text-sm whitespace-nowrap"
+        >
+          {isStartingInstant ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <>
+              <span className="w-2.5 h-2.5 bg-white rounded-full animate-pulse" />
+              ⚡ Start Instant Live Session
+            </>
+          )}
+        </button>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
