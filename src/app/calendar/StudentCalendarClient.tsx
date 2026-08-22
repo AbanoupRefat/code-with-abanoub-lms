@@ -21,6 +21,7 @@ export default function StudentCalendarClient({ events }: { events: any[] }) {
       case 'lecture': return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 uppercase tracking-wider">{t("calendar.typeLecture")}</span>;
       case 'assignment': return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700 uppercase tracking-wider">{t("calendar.typeAssignment")}</span>;
       case 'holiday': return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 uppercase tracking-wider">{t("calendar.typeHoliday")}</span>;
+      case 'live_session': return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 uppercase tracking-wider flex items-center gap-1"><span className="w-1.5 h-1.5 bg-rose-600 rounded-full animate-pulse" /> Live</span>;
       default: return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-700 uppercase tracking-wider">{t("calendar.typeOther")}</span>;
     }
   };
@@ -80,13 +81,23 @@ export default function StudentCalendarClient({ events }: { events: any[] }) {
                       <p className="text-sm text-muted-foreground mb-4">{evt.description}</p>
                     )}
                     
-                    {isLinked && linkUrl !== '#' && (
+                    {evt.event_type === 'live_session' && evt.meeting_url ? (
                       <Link 
-                        href={linkUrl}
-                        className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline underline-offset-4 mt-2"
+                        href={`/live/${evt.id}`}
+                        className="inline-flex items-center justify-center gap-2 w-full mt-4 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-lg transition-colors shadow-sm shadow-rose-900/20"
                       >
-                        {evt.quiz_id ? "Take Quiz" : "View Course"} <ChevronRight className="w-4 h-4" />
+                        <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                        Join Live Class
                       </Link>
+                    ) : (
+                      isLinked && linkUrl !== '#' && (
+                        <Link 
+                          href={linkUrl}
+                          className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline underline-offset-4 mt-2"
+                        >
+                          {evt.quiz_id ? "Take Quiz" : "View Course"} <ChevronRight className="w-4 h-4" />
+                        </Link>
+                      )
                     )}
                   </div>
                 </div>

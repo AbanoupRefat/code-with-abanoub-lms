@@ -71,10 +71,12 @@ Example output:
     if (!addForm.title || !addForm.event_date) return;
     setIsAdding(true);
     try {
-      await createCalendarEvent({
+      const payload = {
         ...addForm,
-        event_type: addForm.event_type as any
-      });
+        event_type: addForm.event_type as any,
+        meeting_url: addForm.event_type === 'live_session' ? 'room_' + Date.now() + Math.random().toString(36).substring(7) : undefined,
+      };
+      await createCalendarEvent(payload);
       setAddForm({
         title: "", description: "", event_type: "lecture", event_date: "", course_id: "", quiz_id: ""
       });
@@ -97,6 +99,7 @@ Example output:
       case 'lecture': return <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700">{t("calendar.typeLecture")}</span>;
       case 'assignment': return <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700">{t("calendar.typeAssignment")}</span>;
       case 'holiday': return <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">{t("calendar.typeHoliday")}</span>;
+      case 'live_session': return <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 flex items-center gap-1"><span className="w-1.5 h-1.5 bg-rose-600 rounded-full animate-pulse" /> Live Session</span>;
       default: return <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-700">{t("calendar.typeOther")}</span>;
     }
   };
@@ -155,6 +158,7 @@ Example output:
                     className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                   >
                     <option value="lecture">{t("calendar.typeLecture")}</option>
+                    <option value="live_session">Live Session</option>
                     <option value="quiz">{t("calendar.typeQuiz")}</option>
                     <option value="assignment">{t("calendar.typeAssignment")}</option>
                     <option value="holiday">{t("calendar.typeHoliday")}</option>
@@ -228,6 +232,16 @@ Example output:
                         {new Date(evt.event_date).toLocaleString()}
                       </p>
                       {evt.description && <p className="text-sm text-foreground/80">{evt.description}</p>}
+                      {evt.event_type === 'live_session' && evt.meeting_url && (
+                        <div className="mt-3">
+                          <a
+                            href={`/live/${evt.id}`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-md transition-colors"
+                          >
+                            Launch Room
+                          </a>
+                        </div>
+                      )}
                     </div>
                     <button
                       onClick={() => handleDelete(evt.id)}

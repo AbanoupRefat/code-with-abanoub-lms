@@ -651,10 +651,11 @@ export async function updateLastActive() {
 export async function createCalendarEvent(data: {
   title: string;
   description?: string;
-  event_type: 'quiz' | 'lecture' | 'assignment' | 'holiday' | 'other';
+  event_type: 'quiz' | 'lecture' | 'assignment' | 'holiday' | 'other' | 'live_session';
   event_date: string;
   course_id?: string;
   quiz_id?: string;
+  meeting_url?: string;
 }) {
   const supabase = await createClient();
   const { error } = await supabase.from('calendar_events').insert([
@@ -665,6 +666,7 @@ export async function createCalendarEvent(data: {
       event_date: data.event_date,
       course_id: data.course_id || null,
       quiz_id: data.quiz_id || null,
+      meeting_url: data.meeting_url || null,
     }
   ]);
   
