@@ -1,0 +1,105 @@
+.document-container {
+    max-width: var(--page-width);
+    margin: 0 auto;
+    padding: var(--safe-margin);
+    box-sizing: border-box;
+}
+
+/* Page boundaries */
+.page {
+    page-break-after: always;
+    break-after: page;
+    height: calc(var(--page-height) - (2 * var(--safe-margin)));
+    box-sizing: border-box;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Cover Page */
+.cover-page {
+    border: 10px solid var(--brand-purple);
+    padding: 40px;
+    box-sizing: border-box;
+}
+
+.cover-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    align-items: center;
+    text-align: center;
+}
+
+.cover-logo {
+    max-width: 250px;
+    margin-bottom: 2em;
+}
+
+.cover-brand h1 {
+    font-size: 32pt;
+    color: var(--brand-purple-dark);
+    margin: 0;
+    border: none;
+}
+
+.cover-brand h2 {
+    font-size: 24pt;
+    color: var(--brand-purple);
+    margin: 10px 0 3em 0;
+}
+
+.cover-unit-info h3 {
+    font-size: 16pt;
+    color: var(--brand-muted);
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+}
+
+.unit-title {
+    font-size: 28pt;
+    line-height: 1.2;
+    margin-bottom: 2em;
+}
+
+.cover-course-info p {
+    font-size: 14pt;
+    color: var(--brand-text);
+    margin: 5px 0;
+    text-align: center;
+}
+
+.cover-footer {
+    margin-top: auto;
+    width: 100%;
+    text-align: center;
+    font-size: 14pt;
+    font-weight: bold;
+    color: var(--brand-purple-dark);
+}
+
+/* Lesson Opener Page */
+.lesson-opener-page {
+    justify-content: center;
+    align-items: flex-start;
+    padding: 0 40px;
+    background: linear-gradient(135deg, var(--brand-background) 0%, var(--brand-purple-light) 100%);
+    border-left: 20px solid var(--brand-purple);
+}
+
+.lesson-number {
+    font-size: 20pt;
+    font-weight: bold;
+    color: var(--brand-purple);
+    letter-spacing: 3px;
+    margin-bottom: 20px;
+}
+
+.lesson-title {
+    font-size: 36pt;
+    color: var(--brand-purple-dark);
+    line-height: 1.2;
+    margin: 0;
+}

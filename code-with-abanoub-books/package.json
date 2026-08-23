@@ -1,0 +1,17 @@
+{
+  "name": "code-with-abanoub-books",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "node src/build.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "commander": "^15.0.0",
+    "marked": "^18.0.10",
+    "playwright": "^1.62.1"
+  }
+}

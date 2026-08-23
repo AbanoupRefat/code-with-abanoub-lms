@@ -1,0 +1,75 @@
+@media print {
+    @page {
+        size: A4;
+        margin: 20mm; /* Playwright margin overriding this, but good to have */
+    }
+
+    body {
+        background-color: transparent;
+        font-size: 10pt; /* Slightly smaller for print */
+    }
+
+    body::after {
+        content: "ENG. ABANOUB REFAT";
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-45deg);
+        font-size: 70pt;
+        font-weight: 900;
+        color: transparent;
+        -webkit-text-stroke: 3px rgba(128, 0, 128, 0.1);
+        z-index: -100;
+        pointer-events: none;
+        white-space: nowrap;
+    }
+
+    .document-container {
+        padding: 0;
+        margin: 0;
+        width: 100%;
+        max-width: none;
+    }
+
+    .page {
+        height: 265mm !important;
+        max-height: 265mm !important;
+        overflow: hidden !important;
+        page-break-before: always !important;
+        page-break-after: always !important;
+        page-break-inside: avoid !important;
+        break-before: page !important;
+        break-after: page !important;
+        break-inside: avoid !important;
+        margin: 0;
+        box-sizing: border-box !important;
+    }
+
+    /* Print-specific layout adjustments */
+    h1, h2, h3, h4, h5, h6 {
+        page-break-after: avoid;
+        break-after: avoid;
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    p, li, blockquote {
+        orphans: 4;
+        widows: 4;
+    }
+
+    table, figure, .callout, pre, img, .educational-figure, ul, ol, li {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    a {
+        color: var(--brand-black); /* Avoid blue links in print */
+        text-decoration: none;
+    }
+
+    /* Hide UI elements that shouldn't print (if any exist) */
+    .no-print {
+        display: none !important;
+    }
+}
