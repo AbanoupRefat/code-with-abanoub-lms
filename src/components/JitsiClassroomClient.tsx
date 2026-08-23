@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { useLang } from "@/components/LangContext";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { JaaSMeeting } from "@jitsi/react-sdk"; // We can also use JitsiMeeting if we don't use JaaS
 
 export default function JitsiClassroomClient({
   roomName,
@@ -14,17 +12,15 @@ export default function JitsiClassroomClient({
   title,
 }: {
   roomName: string;
-  userName: string;
-  userEmail: string;
-  isAdmin: boolean;
-  title: string;
+  userName?: string;
+  userEmail?: string;
+  isAdmin?: boolean;
+  title?: string;
 }) {
   const { t } = useLang();
-  const [loading, setLoading] = useState(true);
-
-  // We use JitsiMeeting from react-sdk. Wait, JitsiMeeting is standard, JaaS is for 8x8 enterprise.
-  // Actually, @jitsi/react-sdk exports JitsiMeeting.
-  const { JitsiMeeting } = require("@jitsi/react-sdk");
+  
+  // Format the meeting URL to automatically inject user details if we want
+  const meetingUrl = `https://meet.jit.si/${encodeURIComponent(roomName)}`;
 
   return (
     <div className="flex flex-col h-screen bg-black">
@@ -37,56 +33,41 @@ export default function JitsiClassroomClient({
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <div className="flex items-center gap-2">
-            <span className="flex items-center justify-center w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <h1 className="font-bold text-white text-lg">{title}</h1>
-          </div>
+          <h1 className="font-bold text-white text-lg">{title || 'Live Classroom'}</h1>
         </div>
       </header>
 
-      {/* Jitsi Meeting Wrapper */}
-      <main className="flex-1 relative bg-[#0f0f0f]">
-        {loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0f0f0f] text-white z-10">
-            <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-            <p className="text-muted-foreground">Connecting to Live Classroom...</p>
+      {/* Jitsi Bypass UI */}
+      <main className="flex flex-col items-center justify-center w-full h-full min-h-[70vh] bg-gradient-to-br from-brand-background to-brand-purple-light/10 p-8 text-center rounded-2xl border border-brand-purple/10">
+        <div className="bg-white p-10 rounded-3xl shadow-xl max-w-lg w-full border-t-4 border-t-brand-purple transform transition-all hover:shadow-2xl">
+          <div className="w-24 h-24 bg-brand-purple/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-12 h-12 text-brand-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
           </div>
-        )}
-        <JitsiMeeting
-          domain="meet.ffmuc.net"
-          roomName={roomName}
-          configOverwrite={{
-            startWithAudioMuted: !isAdmin,
-            startWithVideoMuted: !isAdmin,
-            prejoinPageEnabled: false, // Skip prejoin page to jump right in
-            disableDeepLinking: true, // Don't prompt to download mobile app
-          }}
-          interfaceConfigOverwrite={{
-            DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
-            SHOW_JITSI_WATERMARK: false,
-            SHOW_WATERMARK_FOR_GUESTS: false,
-            TOOLBAR_BUTTONS: [
-              'microphone', 'camera', 'closedcaptions', 'desktop', 'fullscreen',
-              'fodeviceselection', 'hangup', 'profile', 'chat', 'recording',
-              'livestreaming', 'etherpad', 'sharedvideo', 'settings', 'raisehand',
-              'videoquality', 'filmstrip', 'feedback', 'stats', 'shortcuts',
-              'tileview', 'videobackgroundblur', 'download', 'help', 'mute-everyone',
-              'security'
-            ],
-          }}
-          userInfo={{
-            displayName: userName,
-            email: userEmail,
-          }}
-          onApiReady={(externalApi: any) => {
-            setLoading(false);
-          }}
-          getIFrameRef={(iframeRef: HTMLIFrameElement) => {
-            iframeRef.style.height = '100%';
-            iframeRef.style.width = '100%';
-            iframeRef.style.border = 'none';
-          }}
-        />
+          <h2 className="text-3xl font-bold text-gray-900 mb-3">Live Classroom Ready</h2>
+          <p className="text-gray-600 mb-8 text-lg">
+            To ensure the highest quality connection and unlimited meeting time, the classroom will open in a secure dedicated window.
+          </p>
+          
+          <a 
+            href={meetingUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center w-full px-8 py-4 text-lg font-bold text-white transition-all bg-brand-purple rounded-xl hover:bg-brand-purple-dark hover:shadow-lg hover:-translate-y-1"
+          >
+            <span>Join Live Class Now</span>
+            <svg className="w-6 h-6 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </a>
+          
+          {isAdmin && (
+            <p className="mt-6 text-sm text-gray-500 bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-inner">
+              <strong>Admin Note:</strong> Opening Jitsi in a new tab completely bypasses their 5-minute embedding limit, keeping your classes 100% free and unlimited.
+            </p>
+          )}
+        </div>
       </main>
     </div>
   );
