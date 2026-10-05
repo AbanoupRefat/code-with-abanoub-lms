@@ -15,6 +15,7 @@ const translations: Record<string, Record<Lang, string>> = {
   // Navigation
   "nav.overview": { en: "Overview", ar: "نظرة عامة" },
   "nav.students": { en: "Students", ar: "الطلاب" },
+  "nav.payments": { en: "Payments", ar: "المدفوعات" },
   "nav.enrollments": { en: "Enrollments", ar: "التسجيلات" },
   "nav.courses": { en: "Courses", ar: "الدورات" },
   "nav.lessons": { en: "Lessons", ar: "الدروس" },
@@ -196,6 +197,34 @@ const translations: Record<string, Record<Lang, string>> = {
   "analytics.status": { en: "Status", ar: "الحالة" },
   "analytics.best": { en: "Best Performance", ar: "أفضل أداء" },
   "analytics.needsWork": { en: "Needs Review", ar: "يحتاج مراجعة" },
+
+  // Payments
+  "payments.title": { en: "Student Monthly Payments", ar: "مدفوعات الطلاب الشهرية" },
+  "payments.subtitle": { en: "Track and record monthly student tuition and payment status.", ar: "متابعة وتسجيل المصروفات وحالة دفع الطلاب شهريًا." },
+  "payments.month": { en: "Month", ar: "الشهر" },
+  "payments.year": { en: "Year", ar: "السنة" },
+  "payments.status": { en: "Status", ar: "الحالة" },
+  "payments.paid": { en: "Paid", ar: "تم الدفع" },
+  "payments.unpaid": { en: "Unpaid", ar: "غير مدفوع" },
+  "payments.pending": { en: "Pending", ar: "قيد الانتظار" },
+  "payments.totalStudents": { en: "Total Students", ar: "إجمالي الطلاب" },
+  "payments.paidCount": { en: "Paid This Month", ar: "تم الدفع هذا الشهر" },
+  "payments.unpaidCount": { en: "Unpaid This Month", ar: "لم يتم الدفع هذا الشهر" },
+  "payments.amount": { en: "Amount", ar: "المبلغ" },
+  "payments.method": { en: "Payment Method", ar: "طريقة الدفع" },
+  "payments.paidDate": { en: "Paid Date", ar: "تاريخ الدفع" },
+  "payments.notes": { en: "Notes", ar: "ملاحظات" },
+  "payments.markPaid": { en: "Mark as Paid", ar: "تحديد كمدفوع" },
+  "payments.markUnpaid": { en: "Mark as Unpaid", ar: "تحديد كغير مدفوع" },
+  "payments.markPending": { en: "Mark as Pending", ar: "تحديد كقيد الانتظار" },
+  "payments.updateStatus": { en: "Update Status", ar: "تحديث الحالة" },
+  "payments.searchPlaceholder": { en: "Search student by name or email...", ar: "ابحث عن طالب بالاسم أو البريد الإلكتروني..." },
+  "payments.studentCardTitle": { en: "Monthly Payment Status", ar: "حالة الدفع الشهري" },
+  "payments.studentPaidMsg": { en: "Your payment for {month} {year} has been received.", ar: "تم استلام دفع شهر {month} {year} بنجاح." },
+  "payments.studentUnpaidMsg": { en: "Payment for {month} {year} is due. Please send receipt to WhatsApp.", ar: "دفعة شهر {month} {year} مستحقة. يرجى إرسال الإيصال عبر الواتساب." },
+  "payments.studentPendingMsg": { en: "Your payment for {month} {year} is currently under review.", ar: "دفعة شهر {month} {year} قيد المراجعة حاليًا." },
+  "payments.history": { en: "Payment History", ar: "سجل المدفوعات" },
+  "payments.whatsappNotice": { en: "Send payment receipt via WhatsApp to: 01017747943", ar: "أرسل إيصال الدفع عبر الواتساب إلى: 01017747943" },
 };
 
 const LangContext = createContext<LangContextType>({

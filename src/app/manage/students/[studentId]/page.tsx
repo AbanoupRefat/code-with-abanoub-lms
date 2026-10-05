@@ -1,9 +1,10 @@
 import AdminNavigation from "@/components/AdminNavigation";
-import { User, BookOpen, PlusCircle, Trash2, ArrowLeft } from "lucide-react";
+import { User, BookOpen, PlusCircle, Trash2, ArrowLeft, CreditCard, CheckCircle2, XCircle } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { enrollStudent, unenrollStudent } from "../../actions";
+import { updateStudentPaymentStatus } from "@/app/manage/payments/actions";
 
 export default async function StudentManagementPage({ params }: { params: Promise<{ studentId: string }> }) {
   const supabase = await createClient();
@@ -61,6 +62,25 @@ export default async function StudentManagementPage({ params }: { params: Promis
 
   const enrolledCourseIds = (enrollments as any[])?.map(e => e.courses.id) || [];
   const availableCourses = allCourses?.filter(c => !enrolledCourseIds.includes(c.id)) || [];
+
+  // Fetch student payments
+  let studentPayments: any[] = [];
+  try {
+    const { data: fetchedPayments } = await supabase
+      .from("student_payments")
+      .select("*")
+      .eq("student_id", studentId)
+      .order("year", { ascending: false })
+      .order("month", { ascending: false });
+    if (fetchedPayments) studentPayments = fetchedPayments;
+  } catch (err) {
+    console.warn("Error fetching payments:", err);
+  }
+
+  const MONTH_NAMES = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -137,6 +157,85 @@ export default async function StudentManagementPage({ params }: { params: Promis
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Payment History Section */}
+            <div className="pt-6 space-y-4">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-foreground">
+                <CreditCard className="w-5 h-5 text-primary" /> Monthly Payment Records
+              </h2>
+
+              <div className="clean-panel rounded-lg overflow-hidden">
+                <table className="w-full text-left text-sm border-collapse">
+                  <thead className="bg-muted border-b border-border">
+                    <tr>
+                      <th className="px-6 py-3 font-semibold text-muted-foreground">Period</th>
+                      <th className="px-6 py-3 font-semibold text-muted-foreground">Status</th>
+                      <th className="px-6 py-3 font-semibold text-muted-foreground">Amount</th>
+                      <th className="px-6 py-3 font-semibold text-muted-foreground">Method</th>
+                      <th className="px-6 py-3 font-semibold text-muted-foreground text-right">Quick Toggle</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border bg-card">
+                    {studentPayments.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
+                          No payment records logged for this student yet.
+                        </td>
+                      </tr>
+                    )}
+                    {studentPayments.map((payment) => (
+                      <tr key={payment.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-6 py-4 font-semibold text-foreground">
+                          {MONTH_NAMES[payment.month - 1]} {payment.year}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold capitalize ${
+                            payment.status === 'paid'
+                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
+                              : payment.status === 'pending'
+                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400'
+                              : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400'
+                          }`}>
+                            {payment.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 font-mono">
+                          {payment.amount > 0 ? `${payment.amount} EGP` : '—'}
+                        </td>
+                        <td className="px-6 py-4 text-xs text-muted-foreground">
+                          {payment.payment_method || '—'}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <form action={async () => {
+                            "use server";
+                            const nextStatus = payment.status === 'paid' ? 'unpaid' : 'paid';
+                            await updateStudentPaymentStatus({
+                              studentId,
+                              month: payment.month,
+                              year: payment.year,
+                              status: nextStatus,
+                              amount: payment.amount,
+                              paymentMethod: payment.payment_method || 'Vodafone Cash',
+                            });
+                          }}>
+                            <button
+                              type="submit"
+                              className={`px-3 py-1 rounded-md text-xs font-bold transition-colors ${
+                                payment.status === 'paid'
+                                  ? 'bg-muted text-muted-foreground hover:bg-rose-500/10 hover:text-rose-600'
+                                  : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                              }`}
+                            >
+                              {payment.status === 'paid' ? 'Mark Unpaid' : 'Mark Paid'}
+                            </button>
+                          </form>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 

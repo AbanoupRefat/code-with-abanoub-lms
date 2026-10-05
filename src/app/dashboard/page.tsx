@@ -1,4 +1,5 @@
 import Navigation from "@/components/Navigation";
+import StudentPaymentCard from "@/components/StudentPaymentCard";
 import { BookOpen, Clock, Trophy, PlayCircle, Lock } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
@@ -6,7 +7,7 @@ import Link from "next/link";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return redirect("/login");
 
@@ -92,6 +93,21 @@ export default async function DashboardPage() {
     .eq('student_id', user.id)
     .order('submitted_at', { ascending: false })
     .limit(5);
+
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+
+  let studentPayments: any[] = [];
+  try {
+    const { data: fetchedPayments } = await supabase
+      .from('student_payments')
+      .select('*')
+      .eq('student_id', user.id);
+    if (fetchedPayments) studentPayments = fetchedPayments;
+  } catch (err) {
+    console.warn('Failed to fetch student payments:', err);
+  }
 
   // Determine course for "Resume Learning"
   // For simplicity, find the first active course that is not 100% completed
@@ -244,10 +260,17 @@ export default async function DashboardPage() {
             </section>
           </div>
 
-          <div className="xl:col-span-1">
-            <section className="sticky top-6">
-              <h2 className="text-lg font-bold mb-4 text-foreground">Recent Quiz Scores</h2>
-              <div className="clean-panel rounded-lg overflow-hidden">
+          <div className="xl:col-span-1 space-y-8">
+            <section className="sticky top-6 space-y-6">
+              <StudentPaymentCard
+                payments={studentPayments}
+                currentMonth={currentMonth}
+                currentYear={currentYear}
+              />
+
+              <div>
+                <h2 className="text-lg font-bold mb-4 text-foreground">Recent Quiz Scores</h2>
+                <div className="clean-panel rounded-lg overflow-hidden">
                 {(!quizSubmissions || quizSubmissions.length === 0) ? (
                   <div className="p-8 text-center text-muted-foreground text-sm">
                     <Trophy className="w-8 h-8 mx-auto mb-3 opacity-20" />
@@ -281,6 +304,7 @@ export default async function DashboardPage() {
                     })}
                   </div>
                 )}
+                </div>
               </div>
             </section>
           </div>
