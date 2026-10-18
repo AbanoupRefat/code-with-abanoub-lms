@@ -60,6 +60,9 @@ const PAYMENT_METHODS = [
   "Other"
 ];
 
+// Default monthly tuition, used by the quick-pay buttons and as the edit-modal default
+const DEFAULT_PAYMENT_AMOUNT = 500;
+
 export default function PaymentsClient({
   initialStudents,
   initialPayments,
@@ -156,12 +159,33 @@ export default function PaymentsClient({
     });
   };
 
+  // Quick pay: mark as paid with the default amount and the chosen method
+  const handleQuickPay = (studentId: string, method: "Cash" | "InstaPay") => {
+    startTransition(async () => {
+      try {
+        await updateStudentPaymentStatus({
+          studentId,
+          month: selectedMonth,
+          year: selectedYear,
+          status: "paid",
+          amount: DEFAULT_PAYMENT_AMOUNT,
+          paymentMethod: method,
+        });
+        toast.success(
+          t("payments.paidVia", { amount: DEFAULT_PAYMENT_AMOUNT, method: method === "Cash" ? t("payments.cash") : t("payments.instapay") })
+        );
+      } catch (err: any) {
+        toast.error(err?.message || "Failed to update payment status");
+      }
+    });
+  };
+
   // Open edit modal
   const handleOpenEdit = (student: StudentProfile) => {
     const payment = paymentMap.get(student.id);
     setEditingStudent({ student, payment });
     setEditStatus(payment ? payment.status : "paid");
-    setEditAmount(payment ? payment.amount : 0);
+    setEditAmount(payment && Number(payment.amount) > 0 ? Number(payment.amount) : DEFAULT_PAYMENT_AMOUNT);
     setEditMethod(payment?.payment_method || "Vodafone Cash");
     setEditNotes(payment?.notes || "");
   };
@@ -199,7 +223,10 @@ export default function PaymentsClient({
   };
 
   // Batch action
-  const handleBatchStatus = (targetStatus: "paid" | "unpaid" | "pending") => {
+  const handleBatchStatus = (
+    targetStatus: "paid" | "unpaid" | "pending",
+    method?: "Cash" | "InstaPay"
+  ) => {
     if (selectedStudentIds.length === 0) return;
 
     startTransition(async () => {
@@ -209,6 +236,8 @@ export default function PaymentsClient({
           month: selectedMonth,
           year: selectedYear,
           status: targetStatus,
+          amount: targetStatus === "paid" ? DEFAULT_PAYMENT_AMOUNT : 0,
+          ...(method ? { paymentMethod: method } : {}),
         });
         toast.success(`Updated ${selectedStudentIds.length} students to ${targetStatus}`);
         setSelectedStudentIds([]);
@@ -353,12 +382,20 @@ export default function PaymentsClient({
           </span>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => handleBatchStatus("paid")}
+              onClick={() => handleBatchStatus("paid", "Cash")}
               disabled={isPending}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-md transition-colors flex items-center gap-1"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-md transition-colors flex items-center gap-1 disabled:opacity-60"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
-              {t("payments.markPaid")}
+              {t("payments.cash")} · {DEFAULT_PAYMENT_AMOUNT}
+            </button>
+            <button
+              onClick={() => handleBatchStatus("paid", "InstaPay")}
+              disabled={isPending}
+              className="bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold px-3 py-1.5 rounded-md transition-colors flex items-center gap-1 disabled:opacity-60"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              {t("payments.instapay")} · {DEFAULT_PAYMENT_AMOUNT}
             </button>
             <button
               onClick={() => handleBatchStatus("unpaid")}
@@ -509,18 +546,35 @@ export default function PaymentsClient({
                     {/* Quick Action & Edit */}
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {/* Quick Toggle Button */}
-                        <button
-                          onClick={() => handleQuickToggle(student.id, status)}
-                          disabled={isPending}
-                          className={`px-3 py-1 rounded-md text-xs font-bold transition-colors ${
-                            status === "paid"
-                              ? "bg-muted text-muted-foreground hover:bg-rose-500/10 hover:text-rose-600"
-                              : "bg-emerald-600 text-white hover:bg-emerald-700"
-                          }`}
-                        >
-                          {status === "paid" ? t("payments.markUnpaid") : t("payments.markPaid")}
-                        </button>
+                        {/* Quick pay buttons (default amount) / undo */}
+                        {status === "paid" ? (
+                          <button
+                            onClick={() => handleQuickToggle(student.id, status)}
+                            disabled={isPending}
+                            className="px-3 py-1 rounded-md text-xs font-bold transition-colors bg-muted text-muted-foreground hover:bg-rose-500/10 hover:text-rose-600 disabled:opacity-60"
+                          >
+                            {t("payments.markUnpaid")}
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleQuickPay(student.id, "Cash")}
+                              disabled={isPending}
+                              title={`${t("payments.markPaid")} · ${DEFAULT_PAYMENT_AMOUNT} EGP`}
+                              className="px-3 py-1 rounded-md text-xs font-bold transition-colors bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+                            >
+                              {t("payments.cash")}
+                            </button>
+                            <button
+                              onClick={() => handleQuickPay(student.id, "InstaPay")}
+                              disabled={isPending}
+                              title={`${t("payments.markPaid")} · ${DEFAULT_PAYMENT_AMOUNT} EGP`}
+                              className="px-3 py-1 rounded-md text-xs font-bold transition-colors bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-60"
+                            >
+                              {t("payments.instapay")}
+                            </button>
+                          </>
+                        )}
 
                         {/* Detail Edit Modal Trigger */}
                         <button

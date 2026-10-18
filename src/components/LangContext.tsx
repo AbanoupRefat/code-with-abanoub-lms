@@ -7,7 +7,7 @@ type Lang = "en" | "ar";
 interface LangContextType {
   lang: Lang;
   setLang: (l: Lang) => void;
-  t: (key: string) => string;
+  t: (key: string, vars?: Record<string, string | number>) => string;
   dir: "ltr" | "rtl";
 }
 
@@ -217,6 +217,9 @@ const translations: Record<string, Record<Lang, string>> = {
   "payments.markPaid": { en: "Mark as Paid", ar: "تحديد كمدفوع" },
   "payments.markUnpaid": { en: "Mark as Unpaid", ar: "تحديد كغير مدفوع" },
   "payments.markPending": { en: "Mark as Pending", ar: "تحديد كقيد الانتظار" },
+  "payments.cash": { en: "Cash", ar: "كاش" },
+  "payments.instapay": { en: "InstaPay", ar: "إنستاباي" },
+  "payments.paidVia": { en: "Marked paid: {amount} EGP via {method}", ar: "تم التسجيل كمدفوع: {amount} جنيه عبر {method}" },
   "payments.updateStatus": { en: "Update Status", ar: "تحديث الحالة" },
   "payments.searchPlaceholder": { en: "Search student by name or email...", ar: "ابحث عن طالب بالاسم أو البريد الإلكتروني..." },
   "payments.studentCardTitle": { en: "Monthly Payment Status", ar: "حالة الدفع الشهري" },
