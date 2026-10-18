@@ -2,6 +2,7 @@
 
 import { Trash2 } from "lucide-react";
 import { useTransition } from "react";
+import { toast } from "sonner";
 import { deleteStudent } from "../actions";
 
 interface DeleteStudentIconButtonProps {
@@ -12,13 +13,34 @@ interface DeleteStudentIconButtonProps {
 export function DeleteStudentIconButton({ studentId, studentName }: DeleteStudentIconButtonProps) {
   const [isPending, startTransition] = useTransition();
 
-  function handleClick() {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${studentName}"?\n\nThis will permanently remove their profile, enrollments, payment records, and quiz submissions.\nTheir Google account is NOT blocked — they can sign up again.`
-    );
-    if (!confirmed) return;
+  function runDelete() {
     startTransition(async () => {
-      await deleteStudent(studentId);
+      const loadingId = toast.loading(`Deleting ${studentName}…`);
+      try {
+        await deleteStudent(studentId);
+        toast.success(`${studentName} was deleted`, { id: loadingId });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Something went wrong";
+        toast.error(`Could not delete ${studentName}: ${message}`, { id: loadingId });
+      }
+    });
+  }
+
+  function handleClick() {
+    toast(`Delete ${studentName}?`, {
+      id: `confirm-delete-${studentId}`,
+      description:
+        "This permanently removes their profile, enrollments, payment records, and quiz submissions. Their Google account is not blocked.",
+      duration: 10000,
+      action: {
+        label: "Confirm delete",
+        onClick: runDelete,
+      },
+      actionButtonStyle: { backgroundColor: "#dc2626", color: "#fff" },
+      cancel: {
+        label: "Cancel",
+        onClick: () => {},
+      },
     });
   }
 
