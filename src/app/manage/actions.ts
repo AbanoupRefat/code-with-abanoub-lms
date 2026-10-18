@@ -126,6 +126,66 @@ export async function deleteStudent(studentId: string): Promise<{ success: boole
   return { success: true };
 }
 
+export async function deleteStudents(
+  studentIds: string[]
+): Promise<{ success: boolean; deletedCount: number; error?: string }> {
+  const supabase = await createClient();
+
+  // Verify caller is admin
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, deletedCount: 0, error: "Unauthorized" };
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  if (profile?.role !== 'admin') return { success: false, deletedCount: 0, error: "Unauthorized" };
+
+  const requested = Array.from(new Set(studentIds)).filter(Boolean);
+  if (requested.length === 0) return { success: false, deletedCount: 0, error: "No students selected" };
+
+  // Only ever delete real students — never admins, never the caller.
+  const { data: validRows, error: lookupError } = await supabase
+    .from("profiles")
+    .select("id")
+    .in("id", requested)
+    .eq("role", "student")
+    .neq("id", user.id);
+  if (lookupError) return { success: false, deletedCount: 0, error: lookupError.message };
+  const ids = (validRows ?? []).map((r) => r.id as string);
+  if (ids.length === 0) return { success: false, deletedCount: 0, error: "No matching students found" };
+
+  // Delete related data first
+  for (const table of ["enrollments", "student_payments", "quiz_submissions"]) {
+    const { error: relatedError } = await supabase.from(table).delete().in("student_id", ids);
+    if (relatedError) return { success: false, deletedCount: 0, error: `Failed to delete ${table}: ${relatedError.message}` };
+  }
+
+  // Delete the profiles (auth users stay, so they can re-register).
+  // .select() returns the deleted rows so a silent 0-row delete (RLS) is detected.
+  const { data: deleted, error } = await supabase
+    .from("profiles")
+    .delete()
+    .in("id", ids)
+    .select("id");
+  if (error) return { success: false, deletedCount: 0, error: error.message };
+
+  const deletedCount = deleted?.length ?? 0;
+  revalidatePath("/manage/students");
+
+  if (deletedCount === 0) {
+    return {
+      success: false,
+      deletedCount,
+      error: "Nothing was deleted — Row Level Security is blocking DELETE on profiles. Add the admin delete policy in Supabase.",
+    };
+  }
+  if (deletedCount < ids.length) {
+    return {
+      success: false,
+      deletedCount,
+      error: `Only ${deletedCount} of ${ids.length} students were deleted.`,
+    };
+  }
+  return { success: true, deletedCount };
+}
+
 export async function createQuiz(unitId: string, courseId: string, formData: FormData) {
   const supabase = await createClient();
   const title = formData.get("title") as string;

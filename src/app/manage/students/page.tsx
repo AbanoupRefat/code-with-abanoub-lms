@@ -1,9 +1,7 @@
 import AdminNavigation from "@/components/AdminNavigation";
-import { Users, User, ArrowRight } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { DeleteStudentIconButton } from "./DeleteStudentIconButton";
+import { StudentsTable, type StudentRow } from "./StudentsTable";
 
 function getActivityStatus(lastActiveAt: string | null) {
   if (!lastActiveAt) return { label: 'Never', color: 'text-muted-foreground', dot: 'bg-muted-foreground' };
@@ -32,6 +30,24 @@ export default async function ManageStudentsPage() {
     .eq('role', 'student')
     .order('last_active_at', { ascending: false, nullsFirst: false });
 
+  const rows: StudentRow[] = (students ?? []).map((student) => {
+    const lastActiveAt = (student as any).last_active_at as string | null;
+    const activity = getActivityStatus(lastActiveAt);
+    return {
+      id: student.id,
+      fullName: student.full_name || "Unknown User",
+      email: (student as any).email || "—",
+      avatarUrl: student.avatar_url || null,
+      activityLabel: activity.label,
+      activityColor: activity.color,
+      activityDot: activity.dot,
+      lastActiveText: lastActiveAt
+        ? new Date(lastActiveAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+        : null,
+      joinedText: new Date(student.created_at).toLocaleDateString(),
+    };
+  });
+
   return (
     <div className="flex min-h-screen bg-background">
       <AdminNavigation />
@@ -42,74 +58,7 @@ export default async function ManageStudentsPage() {
           <p className="text-muted-foreground text-sm">Manage enrolled students. Sorted by most recent activity.</p>
         </header>
 
-        <div className="clean-panel rounded-lg overflow-hidden">
-          <table className="w-full text-left text-sm border-collapse">
-            <thead className="bg-muted border-b border-border">
-              <tr>
-                <th className="px-6 py-3 font-semibold text-muted-foreground">Student Name</th>
-                <th className="px-6 py-3 font-semibold text-muted-foreground">Email</th>
-                <th className="px-6 py-3 font-semibold text-muted-foreground">Last Active</th>
-                <th className="px-6 py-3 font-semibold text-muted-foreground">Joined</th>
-                <th className="px-6 py-3 font-semibold text-muted-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border bg-card">
-              {students?.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
-                    No students found.
-                  </td>
-                </tr>
-              )}
-              {students?.map(student => {
-                const activity = getActivityStatus((student as any).last_active_at);
-                return (
-                  <tr key={student.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground overflow-hidden">
-                          {student.avatar_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={student.avatar_url} alt={student.full_name || "User"} className="w-full h-full object-cover" />
-                          ) : (
-                            <User className="w-4 h-4" />
-                          )}
-                        </div>
-                        <span className="font-medium text-foreground">{student.full_name || "Unknown User"}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground text-xs">{(student as any).email || '—'}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${activity.dot}`} />
-                        <span className={`text-sm font-medium ${activity.color}`}>{activity.label}</span>
-                      </div>
-                      {(student as any).last_active_at && (
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {new Date((student as any).last_active_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground">
-                      {new Date(student.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-4">
-                        <Link href={`/manage/students/${student.id}`} className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
-                          Manage <ArrowRight className="w-4 h-4" />
-                        </Link>
-                        <DeleteStudentIconButton
-                          studentId={student.id}
-                          studentName={student.full_name || "this student"}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <StudentsTable students={rows} />
       </main>
     </div>
   );
