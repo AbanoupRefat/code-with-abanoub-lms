@@ -17,11 +17,14 @@ export function DeleteStudentIconButton({ studentId, studentName }: DeleteStuden
     startTransition(async () => {
       const loadingId = toast.loading(`Deleting ${studentName}…`);
       try {
-        await deleteStudent(studentId);
-        toast.success(`${studentName} was deleted`, { id: loadingId });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Something went wrong";
-        toast.error(`Could not delete ${studentName}: ${message}`, { id: loadingId });
+        const result = await deleteStudent(studentId);
+        if (result.success) {
+          toast.success(`${studentName} was deleted`, { id: loadingId });
+        } else {
+          toast.error(result.error ?? `Could not delete ${studentName}`, { id: loadingId, duration: 10000 });
+        }
+      } catch {
+        toast.error(`Could not delete ${studentName}. Please try again.`, { id: loadingId });
       }
     });
   }

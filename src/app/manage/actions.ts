@@ -91,26 +91,39 @@ export async function unenrollStudent(studentId: string, courseId: string) {
   revalidatePath(`/manage/students/${studentId}`);
 }
 
-export async function deleteStudent(studentId: string) {
+export async function deleteStudent(studentId: string): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
 
   // Verify caller is admin
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  if (!user) return { success: false, error: "Unauthorized" };
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (profile?.role !== 'admin') throw new Error("Unauthorized");
+  if (profile?.role !== 'admin') return { success: false, error: "Unauthorized" };
 
-  // Delete related data in order (enrollments, payments, then profile)
-  await supabase.from("enrollments").delete().eq("student_id", studentId);
-  await supabase.from("student_payments").delete().eq("student_id", studentId);
-  await supabase.from("quiz_submissions").delete().eq("student_id", studentId);
+  // Delete related data first (enrollments, payments, quiz submissions)
+  for (const table of ["enrollments", "student_payments", "quiz_submissions"]) {
+    const { error: relatedError } = await supabase.from(table).delete().eq("student_id", studentId);
+    if (relatedError) return { success: false, error: `Failed to delete ${table}: ${relatedError.message}` };
+  }
 
-  // Delete the profile row (does NOT delete the auth user — they can re-register)
-  const { error } = await supabase.from("profiles").delete().eq("id", studentId);
-  if (error) throw new Error(error.message);
+  // Delete the profile row (does NOT delete the auth user — they can re-register).
+  // .select() returns the deleted rows, so a silent 0-row delete (Row Level Security
+  // with no admin DELETE policy) is detected instead of looking like success.
+  const { data: deleted, error } = await supabase
+    .from("profiles")
+    .delete()
+    .eq("id", studentId)
+    .select("id");
+  if (error) return { success: false, error: error.message };
+  if (!deleted || deleted.length === 0) {
+    return {
+      success: false,
+      error: "Nothing was deleted — Row Level Security is blocking DELETE on profiles. Add the admin delete policy in Supabase.",
+    };
+  }
 
   revalidatePath("/manage/students");
-  redirect("/manage/students");
+  return { success: true };
 }
 
 export async function createQuiz(unitId: string, courseId: string, formData: FormData) {

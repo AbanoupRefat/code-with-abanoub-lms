@@ -292,7 +292,9 @@ export default async function StudentManagementPage({ params }: { params: Promis
                 studentName={student.full_name || "this student"}
                 deleteAction={async () => {
                   "use server";
-                  await deleteStudent(studentId);
+                  const result = await deleteStudent(studentId);
+                  if (!result.success) throw new Error(result.error);
+                  redirect("/manage/students");
                 }}
               />
             </div>
