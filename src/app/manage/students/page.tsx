@@ -3,6 +3,7 @@ import { Users, User, ArrowRight } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { DeleteStudentIconButton } from "./DeleteStudentIconButton";
 
 function getActivityStatus(lastActiveAt: string | null) {
   if (!lastActiveAt) return { label: 'Never', color: 'text-muted-foreground', dot: 'bg-muted-foreground' };
@@ -93,9 +94,15 @@ export default async function ManageStudentsPage() {
                       {new Date(student.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4">
-                      <Link href={`/manage/students/${student.id}`} className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
-                        Manage <ArrowRight className="w-4 h-4" />
-                      </Link>
+                      <div className="flex items-center gap-4">
+                        <Link href={`/manage/students/${student.id}`} className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+                          Manage <ArrowRight className="w-4 h-4" />
+                        </Link>
+                        <DeleteStudentIconButton
+                          studentId={student.id}
+                          studentName={student.full_name || "this student"}
+                        />
+                      </div>
                     </td>
                   </tr>
                 );
