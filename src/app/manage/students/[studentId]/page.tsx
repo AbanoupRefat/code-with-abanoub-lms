@@ -1,10 +1,11 @@
 import AdminNavigation from "@/components/AdminNavigation";
-import { User, BookOpen, PlusCircle, Trash2, ArrowLeft, CreditCard, CheckCircle2, XCircle } from "lucide-react";
+import { User, BookOpen, PlusCircle, Trash2, ArrowLeft, CreditCard, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { enrollStudent, unenrollStudent } from "../../actions";
+import { enrollStudent, unenrollStudent, deleteStudent } from "../../actions";
 import { updateStudentPaymentStatus } from "@/app/manage/payments/actions";
+import { DeleteStudentButton } from "./DeleteStudentButton";
 
 export default async function StudentManagementPage({ params }: { params: Promise<{ studentId: string }> }) {
   const supabase = await createClient();
@@ -239,7 +240,7 @@ export default async function StudentManagementPage({ params }: { params: Promis
             </div>
           </div>
 
-          <div>
+          <div className="space-y-4">
             <div className="clean-panel p-6 rounded-lg sticky top-8">
               <h3 className="font-bold text-foreground mb-4">Enroll in Course</h3>
               <form action={async (formData: FormData) => {
@@ -275,6 +276,25 @@ export default async function StudentManagementPage({ params }: { params: Promis
                   <p className="text-xs text-muted-foreground text-center">Student is enrolled in all available courses.</p>
                 )}
               </form>
+            </div>
+
+            {/* Danger Zone */}
+            <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-5">
+              <h3 className="font-bold text-red-600 dark:text-red-400 flex items-center gap-2 mb-1">
+                <AlertTriangle className="w-4 h-4" />
+                Danger Zone
+              </h3>
+              <p className="text-xs text-muted-foreground mb-4">
+                Deletes this student&apos;s profile, enrollments, payment records, and quiz submissions from the database.
+                Their Google account is <strong>not blocked</strong> — they can sign up again.
+              </p>
+              <DeleteStudentButton
+                studentName={student.full_name || "this student"}
+                deleteAction={async () => {
+                  "use server";
+                  await deleteStudent(studentId);
+                }}
+              />
             </div>
           </div>
 

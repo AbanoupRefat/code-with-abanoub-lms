@@ -91,6 +91,28 @@ export async function unenrollStudent(studentId: string, courseId: string) {
   revalidatePath(`/manage/students/${studentId}`);
 }
 
+export async function deleteStudent(studentId: string) {
+  const supabase = await createClient();
+
+  // Verify caller is admin
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  if (profile?.role !== 'admin') throw new Error("Unauthorized");
+
+  // Delete related data in order (enrollments, payments, then profile)
+  await supabase.from("enrollments").delete().eq("student_id", studentId);
+  await supabase.from("student_payments").delete().eq("student_id", studentId);
+  await supabase.from("quiz_submissions").delete().eq("student_id", studentId);
+
+  // Delete the profile row (does NOT delete the auth user — they can re-register)
+  const { error } = await supabase.from("profiles").delete().eq("id", studentId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/manage/students");
+  redirect("/manage/students");
+}
+
 export async function createQuiz(unitId: string, courseId: string, formData: FormData) {
   const supabase = await createClient();
   const title = formData.get("title") as string;
