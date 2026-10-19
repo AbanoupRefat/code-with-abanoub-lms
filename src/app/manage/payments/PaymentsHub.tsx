@@ -6,6 +6,7 @@ import PaymentsClient, { type PaymentRecord, type StudentProfile } from "./Payme
 import OneTimeFeesPanel from "./OneTimeFeesPanel";
 import PrivateSessionsPanel from "./PrivateSessionsPanel";
 import PaymentPie, { type PieSlice } from "./PaymentPie";
+import StudentPicker from "./StudentPicker";
 import {
   COLORS,
   FEE_LABELS,
@@ -51,6 +52,7 @@ export default function PaymentsHub({
   const [month, setMonth] = useState(currentMonth);
   const [year, setYear] = useState(currentYear);
   const [scope, setScope] = useState<Scope>("period");
+  const [breakdownId, setBreakdownId] = useState("");
 
   const exempt = new Set(exemptIds);
   const monthlyStudents = students.filter((s) => !exempt.has(s.id));
@@ -136,6 +138,30 @@ export default function PaymentsHub({
   const groupVsPrivatePie: PieSlice[] = [
     { name: "Group (tuition + fees)", value: groupIncome, color: COLORS.tuition },
     { name: "Private sessions", value: privateIncome, color: COLORS.private },
+  ];
+
+  // ── Per-student breakdown (all time): every money stream kept separate ──
+  const sb = { tuition: 0, notes: 0, printing: 0, other: 0, private: 0, owed: 0 };
+  if (breakdownId) {
+    payments.forEach((p) => {
+      if (p.student_id === breakdownId && p.status === "paid") sb.tuition += Number(p.amount) || 0;
+    });
+    oneTimePayments.forEach((p) => {
+      if (p.student_id === breakdownId) sb[p.fee_type] += Number(p.amount) || 0;
+    });
+    privateSessions.forEach((s) => {
+      if (s.student_id !== breakdownId) return;
+      if (s.status === "paid") sb.private += Number(s.price) || 0;
+      else sb.owed += Number(s.price) || 0;
+    });
+  }
+  const sbTotal = sb.tuition + sb.notes + sb.printing + sb.other + sb.private;
+  const studentPie: PieSlice[] = [
+    { name: "Group tuition", value: sb.tuition, color: COLORS.tuition },
+    { name: "Private sessions", value: sb.private, color: COLORS.private },
+    { name: FEE_LABELS.notes, value: sb.notes, color: COLORS.notes },
+    { name: FEE_LABELS.printing, value: sb.printing, color: COLORS.printing },
+    { name: "Other fees", value: sb.other, color: COLORS.other },
   ];
 
   const scopeLabel = scope === "all" ? "All time" : `${MONTH_NAMES[month - 1]} ${year}`;
@@ -322,6 +348,34 @@ export default function PaymentsHub({
               centerCaption="Net"
               emptyText="No income recorded for this period"
             />
+          </div>
+
+          {/* One student, every stream separate */}
+          <div className="clean-panel rounded-xl p-5 shadow-sm space-y-4">
+            <div>
+              <h3 className="font-bold text-foreground">Student breakdown</h3>
+              <p className="text-xs text-muted-foreground">
+                All-time money from one student, split into group tuition, private sessions and fees.
+              </p>
+            </div>
+            <div className="max-w-md">
+              <StudentPicker students={sharedStudents} value={breakdownId} onChange={setBreakdownId} />
+            </div>
+            {breakdownId && (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Total paid by this student: <span className="font-bold text-foreground">{formatEgp(sbTotal)}</span>
+                  {sb.owed > 0 && <span className="text-rose-600"> · {formatEgp(sb.owed)} private outstanding</span>}
+                </p>
+                <PaymentPie
+                  title="Money by stream"
+                  data={studentPie}
+                  format={formatEgp}
+                  centerCaption="Paid"
+                  emptyText="This student hasn’t paid anything yet"
+                />
+              </>
+            )}
           </div>
 
           <p className="text-xs text-muted-foreground">

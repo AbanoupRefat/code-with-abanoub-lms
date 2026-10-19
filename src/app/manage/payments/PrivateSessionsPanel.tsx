@@ -45,6 +45,7 @@ export default function PrivateSessionsPanel({ students, sessions, exemptIds, mo
   const [paidNow, setPaidNow] = useState(true);
   const [privateOnly, setPrivateOnly] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [confirming, setConfirming] = useState<{ paid: boolean; method?: QuickMethod } | null>(null);
 
   const exempt = new Set(exemptIds);
   const nameOf = new Map(students.map((s) => [s.id, s.full_name || "Unknown"]));
@@ -110,6 +111,7 @@ export default function PrivateSessionsPanel({ students, sessions, exemptIds, mo
         date,
         privateOnly,
       });
+      setConfirming(null);
       if (result.success) {
         toast.success(
           `${countNum} session${countNum === 1 ? "" : "s"} × ${formatEgp(priceNum)} added for ${
@@ -255,11 +257,46 @@ export default function PrivateSessionsPanel({ students, sessions, exemptIds, mo
           </div>
         </div>
 
-        {paidNow ? (
+        {confirming ? (
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+            <p className="text-sm font-bold text-foreground">Confirm these private sessions</p>
+            <ul className="text-sm text-foreground space-y-1">
+              <li>Student: <span className="font-semibold">{nameOf.get(studentId) ?? "—"}</span></li>
+              <li>
+                {countNum} × {formatEgp(priceNum)} = <span className="font-bold">{formatEgp(previewTotal)}</span>
+              </li>
+              <li>Date: {date}</li>
+              <li>
+                {confirming.paid
+                  ? `Paid via ${confirming.method} — ${formatEgp(previewTotal)} will be added to net revenue`
+                  : `Unpaid — ${formatEgp(previewTotal)} will be added to outstanding, not net revenue`}
+              </li>
+              {privateOnly && <li>Marked as private only (hidden from monthly tuition)</li>}
+            </ul>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => addSessions(confirming.paid, confirming.method)}
+                disabled={isPending}
+                className="flex-1 rounded-lg bg-primary text-primary-foreground text-sm font-bold py-2.5 hover:opacity-90 disabled:opacity-50"
+              >
+                {isPending ? "Saving…" : "Confirm & add"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirming(null)}
+                disabled={isPending}
+                className="px-5 rounded-lg border border-border text-sm font-bold text-muted-foreground hover:text-foreground"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : paidNow ? (
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               type="button"
-              onClick={() => addSessions(true, "Cash")}
+              onClick={() => setConfirming({ paid: true, method: "Cash" })}
               disabled={!canAdd}
               className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-2.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -268,7 +305,7 @@ export default function PrivateSessionsPanel({ students, sessions, exemptIds, mo
             </button>
             <button
               type="button"
-              onClick={() => addSessions(true, "InstaPay")}
+              onClick={() => setConfirming({ paid: true, method: "InstaPay" })}
               disabled={!canAdd}
               className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold py-2.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -279,7 +316,7 @@ export default function PrivateSessionsPanel({ students, sessions, exemptIds, mo
         ) : (
           <button
             type="button"
-            onClick={() => addSessions(false)}
+            onClick={() => setConfirming({ paid: false })}
             disabled={!canAdd}
             className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold py-2.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
