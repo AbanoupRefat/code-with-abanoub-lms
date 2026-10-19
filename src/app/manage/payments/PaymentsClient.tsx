@@ -11,7 +11,6 @@ import {
   User, 
   Edit3, 
   DollarSign, 
-  Calendar, 
   ArrowUpDown,
   CheckSquare,
   Square
@@ -19,6 +18,7 @@ import {
 import { toast } from "sonner";
 import { updateStudentPaymentStatus, batchUpdateStudentPayments } from "./actions";
 import { useLang } from "@/components/LangContext";
+import { DEFAULT_PAYMENT_AMOUNT } from "./types";
 
 export interface StudentProfile {
   id: string;
@@ -43,8 +43,8 @@ export interface PaymentRecord {
 interface PaymentsClientProps {
   initialStudents: StudentProfile[];
   initialPayments: PaymentRecord[];
-  currentMonth: number;
-  currentYear: number;
+  selectedMonth: number;
+  selectedYear: number;
 }
 
 const MONTH_NAMES = [
@@ -60,18 +60,13 @@ const PAYMENT_METHODS = [
   "Other"
 ];
 
-// Default monthly tuition, used by the quick-pay buttons and as the edit-modal default
-const DEFAULT_PAYMENT_AMOUNT = 500;
-
 export default function PaymentsClient({
   initialStudents,
   initialPayments,
-  currentMonth,
-  currentYear,
+  selectedMonth,
+  selectedYear,
 }: PaymentsClientProps) {
   const { t } = useLang();
-  const [selectedMonth, setSelectedMonth] = useState<number>(currentMonth);
-  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "unpaid" | "pending">("all");
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
@@ -249,51 +244,6 @@ export default function PaymentsClient({
 
   return (
     <div className="space-y-8">
-      {/* Top Filter Bar */}
-      <div className="clean-panel p-6 rounded-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-primary/10 text-primary rounded-xl">
-            <CreditCard className="w-6 h-6" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-foreground">{t("payments.title")}</h2>
-            <p className="text-xs text-muted-foreground">{t("payments.subtitle")}</p>
-          </div>
-        </div>
-
-        {/* Month & Year Selection */}
-        <div className="flex items-center gap-3 bg-muted/40 p-1.5 rounded-lg border border-border">
-          <div className="flex items-center gap-2 px-2 text-muted-foreground text-xs font-semibold">
-            <Calendar className="w-4 h-4 text-primary" />
-            <span>{t("payments.month")}:</span>
-          </div>
-
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(Number(e.target.value))}
-            className="bg-background border border-border text-foreground rounded-md px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            {MONTH_NAMES.map((name, idx) => (
-              <option key={idx} value={idx + 1}>
-                {name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="bg-background border border-border text-foreground rounded-md px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            {[2024, 2025, 2026, 2027, 2028].map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="clean-panel p-5 rounded-xl border-l-4 border-l-blue-500 flex items-center justify-between shadow-sm">

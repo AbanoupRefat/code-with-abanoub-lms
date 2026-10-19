@@ -5,6 +5,35 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { toggleLessonComplete } from "@/app/courses/actions";
 
+// Turns the many link shapes people paste (desktop, mobile "m." links, shorts, share links
+// with ?si= / &t= / &list= params, Drive "open?id=") into a URL that can be embedded.
+function getEmbedUrl(raw: string): string {
+  const url = (raw || "").trim();
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "").replace(/^m\./, "");
+
+    if (host === "youtu.be") {
+      const id = u.pathname.split("/").filter(Boolean)[0];
+      if (id) return `https://www.youtube.com/embed/${id}?playsinline=1&rel=0`;
+    }
+    if (host === "youtube.com" || host === "music.youtube.com" || host === "youtube-nocookie.com") {
+      const parts = u.pathname.split("/").filter(Boolean);
+      let id = u.searchParams.get("v");
+      if (!id && ["embed", "shorts", "live", "v"].includes(parts[0])) id = parts[1] ?? null;
+      if (id) return `https://www.youtube.com/embed/${id}?playsinline=1&rel=0`;
+    }
+    if (host === "drive.google.com") {
+      const m = u.pathname.match(/\/file\/d\/([^/]+)/);
+      const id = m?.[1] || u.searchParams.get("id");
+      if (id) return `https://drive.google.com/file/d/${id}/preview`;
+    }
+  } catch {
+    // not a valid absolute URL — fall through and use it as-is
+  }
+  return url;
+}
+
 export default async function CoursePlayerPage(props: { 
   params: Promise<{ courseId: string }>,
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
@@ -129,20 +158,20 @@ export default async function CoursePlayerPage(props: {
     <div className="flex min-h-screen bg-background">
       <Navigation profile={null} />
       
-      <main className="flex-1 flex flex-col md:flex-row h-screen">
+      <main className="flex-1 min-w-0 flex flex-col md:flex-row md:h-screen">
         {/* Left Side: Video/Content Player */}
-        <div className="flex-1 flex flex-col bg-muted/20 border-r border-border overflow-y-auto">
-          <div className="p-4 flex items-center justify-between border-b border-border bg-card">
-            <div className="flex items-center gap-4">
+        <div className="flex-1 min-w-0 flex flex-col bg-muted/20 md:border-r border-border md:overflow-y-auto">
+          <div className="p-3 sm:p-4 flex flex-wrap items-center justify-between gap-2 border-b border-border bg-card">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
               <Link href="/courses" className="text-muted-foreground hover:text-foreground transition-colors">
                 <ChevronLeft className="w-5 h-5" />
               </Link>
-              <h2 className="font-semibold text-lg text-foreground">{course.title}</h2>
+              <h2 className="font-semibold text-base sm:text-lg text-foreground truncate">{course.title}</h2>
             </div>
             
             {activeLesson && !searchParams.quizId && !activeLesson.isLocked && (
               <form action={toggleLessonComplete.bind(null, activeLesson.id, courseId, isActiveLessonCompleted)}>
-                <button type="submit" className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${isActiveLessonCompleted ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-primary text-primary-foreground hover:opacity-90'}`}>
+                <button type="submit" className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors ${isActiveLessonCompleted ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-primary text-primary-foreground hover:opacity-90'}`}>
                   {isActiveLessonCompleted && <CheckCircle2 className="w-4 h-4" />}
                   {isActiveLessonCompleted ? 'Completed' : 'Mark as Complete'}
                 </button>
@@ -163,14 +192,11 @@ export default async function CoursePlayerPage(props: {
               ) : activeLesson?.video_url ? (
                 <>
                   <iframe 
-                    src={(() => {
-                      const url = activeLesson.video_url;
-                      if (url.includes('youtube.com/watch?v=')) return url.replace('watch?v=', 'embed/');
-                      if (url.includes('youtu.be/')) return url.replace('youtu.be/', 'youtube.com/embed/');
-                      if (url.includes('drive.google.com/file/d/')) return url.replace(/\/view.*$/, '/preview');
-                      return url;
-                    })()}
-                    className="w-full h-full border-0"
+                    src={getEmbedUrl(activeLesson.video_url)}
+                    title={activeLesson.title}
+                    className="absolute inset-0 w-full h-full border-0"
+                    allow="autoplay; encrypted-media; picture-in-picture; fullscreen; clipboard-write"
+                    referrerPolicy="strict-origin-when-cross-origin"
                     allowFullScreen
                   />
                   {activeLesson.video_url.includes('drive.google.com') && (
@@ -188,7 +214,7 @@ export default async function CoursePlayerPage(props: {
             </div>
           )}
 
-          <div className="p-8 max-w-4xl mx-auto w-full bg-card min-h-full flex-1">
+          <div className="p-4 sm:p-8 max-w-4xl mx-auto w-full bg-card flex-1">
             {searchParams.quizId ? (() => {
                // @ts-ignore
                const activeQuiz = course.units.flatMap((u:any) => u.quizzes || []).find((q:any) => q.id === searchParams.quizId);
@@ -207,7 +233,7 @@ export default async function CoursePlayerPage(props: {
                );
             })() : activeLesson ? (
               <>
-                <h1 className="text-3xl font-bold mb-6 text-foreground">{activeLesson.title}</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-foreground">{activeLesson.title}</h1>
                 <div className="prose prose-zinc max-w-none text-foreground">
                   <p>{activeLesson.content || activeLesson.description || 'No additional content provided for this lesson.'}</p>
                 </div>
@@ -221,7 +247,7 @@ export default async function CoursePlayerPage(props: {
         </div>
 
         {/* Right Side: Course Curriculum Sidebar */}
-        <div className="w-full md:w-80 lg:w-[400px] bg-card flex flex-col h-full overflow-y-auto border-l border-border">
+        <div className="w-full md:w-80 lg:w-[400px] bg-card flex flex-col md:h-full md:overflow-y-auto border-t md:border-t-0 md:border-l border-border">
           <div className="p-6 border-b border-border">
             <h3 className="font-bold text-lg mb-3 text-foreground">Course Content</h3>
             <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
@@ -230,7 +256,7 @@ export default async function CoursePlayerPage(props: {
             <p className="text-xs text-muted-foreground mt-2 font-medium">{progressPercentage}% Completed</p>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          <div className="flex-1 md:overflow-y-auto p-4 space-y-6">
             {units.length === 0 && (
               <p className="text-sm text-muted-foreground">No units available.</p>
             )}

@@ -1,7 +1,8 @@
 import AdminNavigation from "@/components/AdminNavigation";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import PaymentsClient from "./PaymentsClient";
+import PaymentsHub from "./PaymentsHub";
+import type { OneTimePayment, PrivateSession } from "./types";
 
 export default async function ManagePaymentsPage() {
   const supabase = await createClient();
@@ -42,14 +43,32 @@ export default async function ManagePaymentsPage() {
     console.warn("student_payments table query fallback:", err);
   }
 
+  // One-time fees, private sessions and "private only" flags.
+  // If the migration hasn't been run yet these tables don't exist, so we fall back to
+  // empty lists and tell the UI (it shows a banner pointing at the migration file).
+  const [oneTimeRes, sessionsRes, exemptRes] = await Promise.all([
+    supabase.from("one_time_payments").select("*").order("paid_at", { ascending: false }),
+    supabase.from("private_sessions").select("*").order("session_date", { ascending: false }),
+    supabase.from("monthly_exemptions").select("student_id"),
+  ]);
+
+  const oneTimePayments = (oneTimeRes.error ? [] : oneTimeRes.data ?? []) as OneTimePayment[];
+  const privateSessions = (sessionsRes.error ? [] : sessionsRes.data ?? []) as PrivateSession[];
+  const exemptIds = (exemptRes.error ? [] : exemptRes.data ?? []).map((r) => r.student_id as string);
+
   return (
     <div className="flex min-h-screen bg-background">
       <AdminNavigation />
 
-      <main className="flex-1 p-6 md:p-10 overflow-y-auto">
-        <PaymentsClient
-          initialStudents={students || []}
-          initialPayments={payments}
+      <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-10 overflow-y-auto">
+        <PaymentsHub
+          students={students || []}
+          payments={payments}
+          oneTimePayments={oneTimePayments}
+          privateSessions={privateSessions}
+          exemptIds={exemptIds}
+          oneTimeAvailable={!oneTimeRes.error}
+          sessionsAvailable={!sessionsRes.error}
           currentMonth={currentMonth}
           currentYear={currentYear}
         />
