@@ -100,8 +100,9 @@ export async function deleteStudent(studentId: string): Promise<{ success: boole
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
   if (profile?.role !== 'admin') return { success: false, error: "Unauthorized" };
 
-  // Delete related data first (enrollments, payments, quiz submissions)
-  for (const table of ["enrollments", "student_payments", "quiz_submissions"]) {
+  // Delete learning data first. Money records (tuition, fees, private sessions) are kept on
+  // purpose so revenue survives — the DB nulls their student_id and keeps the name.
+  for (const table of ["enrollments", "quiz_submissions"]) {
     const { error: relatedError } = await supabase.from(table).delete().eq("student_id", studentId);
     if (relatedError) return { success: false, error: `Failed to delete ${table}: ${relatedError.message}` };
   }
@@ -151,8 +152,8 @@ export async function deleteStudents(
   const ids = (validRows ?? []).map((r) => r.id as string);
   if (ids.length === 0) return { success: false, deletedCount: 0, error: "No matching students found" };
 
-  // Delete related data first
-  for (const table of ["enrollments", "student_payments", "quiz_submissions"]) {
+  // Delete learning data first; money records are kept (see deleteStudent).
+  for (const table of ["enrollments", "quiz_submissions"]) {
     const { error: relatedError } = await supabase.from(table).delete().in("student_id", ids);
     if (relatedError) return { success: false, deletedCount: 0, error: `Failed to delete ${table}: ${relatedError.message}` };
   }

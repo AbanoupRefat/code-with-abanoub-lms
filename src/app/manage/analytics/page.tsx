@@ -1,6 +1,8 @@
 import AdminNavigation from "@/components/AdminNavigation";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
+import PaymentPie from "@/app/manage/payments/PaymentPie";
+import { COLORS, FEE_LABELS, PALETTE, formatEgp } from "@/app/manage/payments/types";
 import { BarChart2, Award, Users, TrendingUp, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
 
 export default async function AnalyticsPage() {
@@ -10,6 +12,51 @@ export default async function AnalyticsPage() {
 
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
   if (profile?.role !== 'admin') return redirect("/dashboard");
+
+  // ── Revenue (all money received, kept per stream) ─────────────
+  const [tuitionRes, feesRes, sessionsRes] = await Promise.all([
+    supabase.from('student_payments').select('amount, month, year, status, payment_method').eq('status', 'paid'),
+    supabase.from('one_time_payments').select('amount, fee_type, payment_method, paid_at'),
+    supabase.from('private_sessions').select('price, payment_method, paid_at').eq('status', 'paid'),
+  ]);
+  const cairoYm = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' }).slice(0, 7) : null;
+
+  const rev = { tuition: 0, notes: 0, printing: 0, other: 0, private: 0 };
+  const byMethod: Record<string, number> = {};
+  const byMonth: Record<string, typeof rev> = {};
+  const bump = (ym: string | null, key: keyof typeof rev, amt: number, method: string | null) => {
+    rev[key] += amt;
+    const m = method || 'Unspecified';
+    byMethod[m] = (byMethod[m] || 0) + amt;
+    if (ym) {
+      byMonth[ym] ??= { tuition: 0, notes: 0, printing: 0, other: 0, private: 0 };
+      byMonth[ym][key] += amt;
+    }
+  };
+  for (const p of tuitionRes.data || []) {
+    bump(`${p.year}-${String(p.month).padStart(2, '0')}`, 'tuition', Number(p.amount) || 0, p.payment_method);
+  }
+  for (const p of feesRes.error ? [] : feesRes.data || []) {
+    bump(cairoYm(p.paid_at), p.fee_type as 'notes' | 'printing' | 'other', Number(p.amount) || 0, p.payment_method);
+  }
+  for (const p of sessionsRes.error ? [] : sessionsRes.data || []) {
+    bump(cairoYm(p.paid_at), 'private', Number(p.price) || 0, p.payment_method);
+  }
+  const revTotal = rev.tuition + rev.notes + rev.printing + rev.other + rev.private;
+  let palIdx = 0;
+  const methodSlices = Object.entries(byMethod)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, value]) => ({ name, value, color: (COLORS as Record<string, string>)[name] ?? PALETTE[palIdx++ % PALETTE.length] }));
+  const months = Object.keys(byMonth).sort().slice(-6);
+  const monthMax = Math.max(1, ...months.map((m) => Object.values(byMonth[m]).reduce((a, b) => a + b, 0)));
+  const streams: { key: keyof typeof rev; label: string; color: string }[] = [
+    { key: 'tuition', label: 'Monthly tuition', color: COLORS.tuition },
+    { key: 'notes', label: FEE_LABELS.notes, color: COLORS.notes },
+    { key: 'printing', label: FEE_LABELS.printing, color: COLORS.printing },
+    { key: 'other', label: 'Other fees', color: COLORS.other },
+    { key: 'private', label: 'Private sessions', color: COLORS.private },
+  ];
 
   // Fetch all quiz submissions with full details
   const { data: allSubmissions } = await supabase
@@ -86,6 +133,77 @@ export default async function AnalyticsPage() {
             </div>
             <p className="text-muted-foreground text-sm">A bird's-eye view of student performance across all quizzes.</p>
           </header>
+
+          {/* Revenue */}
+          <section className="mb-12">
+            <h2 className="text-xl font-bold text-foreground mb-1">Revenue</h2>
+            <p className="text-sm text-muted-foreground mb-4">All money received, all time — every stream tracked separately.</p>
+
+            <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+              <div className="col-span-2 lg:col-span-1 p-4 rounded-xl bg-primary text-primary-foreground shadow-md">
+                <p className="text-xs font-semibold uppercase opacity-80">Total net</p>
+                <p className="text-xl font-bold mt-1">{formatEgp(revTotal)}</p>
+              </div>
+              {streams.map((st) => (
+                <div key={st.key} className="clean-panel p-4 rounded-xl border border-border bg-card" style={{ borderLeft: `4px solid ${st.color}` }}>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase">{st.label}</p>
+                  <p className="text-lg font-bold text-foreground mt-1">{formatEgp(rev[st.key])}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+              <PaymentPie
+                title="Revenue by source"
+                subtitle="All time"
+                data={streams.map((st) => ({ name: st.label, value: rev[st.key], color: st.color }))}
+                format={formatEgp}
+                centerCaption="Net"
+                emptyText="No income recorded yet"
+              />
+              <PaymentPie
+                title="Revenue by payment method"
+                subtitle="All time · all sources"
+                data={methodSlices}
+                format={formatEgp}
+                centerCaption="Net"
+                emptyText="No income recorded yet"
+              />
+            </div>
+
+            <div className="clean-panel rounded-xl border border-border bg-card p-5">
+              <h3 className="font-bold text-foreground text-sm mb-1">Income by month (last 6)</h3>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 mb-4">
+                {streams.map((st) => (
+                  <span key={st.key} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: st.color }} />
+                    {st.label}
+                  </span>
+                ))}
+              </div>
+              {months.length === 0 && <p className="text-sm text-muted-foreground">No income recorded yet.</p>}
+              <div className="space-y-3">
+                {months.map((m) => {
+                  const total = Object.values(byMonth[m]).reduce((a, b) => a + b, 0);
+                  return (
+                    <div key={m}>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="font-medium text-foreground">{m}</span>
+                        <span className="text-muted-foreground">{formatEgp(total)}</span>
+                      </div>
+                      <div className="flex h-3 rounded-full overflow-hidden bg-muted" style={{ width: `${Math.max(4, (total / monthMax) * 100)}%` }}>
+                        {streams.map((st) =>
+                          byMonth[m][st.key] > 0 ? (
+                            <div key={st.key} title={`${st.label}: ${formatEgp(byMonth[m][st.key])}`} style={{ width: `${(byMonth[m][st.key] / total) * 100}%`, backgroundColor: st.color }} />
+                          ) : null
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
 
           {/* Top stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">

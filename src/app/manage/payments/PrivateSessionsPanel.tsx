@@ -63,10 +63,12 @@ export default function PrivateSessionsPanel({ students, sessions, exemptIds, mo
     .reduce((sum, s) => sum + Number(s.price), 0);
 
   const byStudent = new Map<string, PrivateSession[]>();
+  // Sessions of deleted students have no student_id; group them by the name we kept.
   sessions.forEach((s) => {
-    const list = byStudent.get(s.student_id) ?? [];
+    const key = s.student_id ?? `former:${s.student_name ?? "unknown"}`;
+    const list = byStudent.get(key) ?? [];
     list.push(s);
-    byStudent.set(s.student_id, list);
+    byStudent.set(key, list);
   });
 
   const rows = [...byStudent.entries()]
@@ -75,7 +77,8 @@ export default function PrivateSessionsPanel({ students, sessions, exemptIds, mo
       const unpaid = list.filter((s) => s.status === "unpaid");
       return {
         id,
-        name: nameOf.get(id) ?? "Unknown",
+        isFormer: id.startsWith("former:"),
+        name: id.startsWith("former:") ? `${list[0].student_name ?? "Unknown"} (former)` : nameOf.get(id) ?? "Unknown",
         list: list.slice().sort((a, b) => b.session_date.localeCompare(a.session_date)),
         total: list.length,
         paidCount: paid.length,
@@ -137,7 +140,7 @@ export default function PrivateSessionsPanel({ students, sessions, exemptIds, mo
     confirmToast({
       id: `confirm-del-session-${s.id}`,
       title: `Delete this ${formatEgp(s.price)} session?`,
-      description: `${nameOf.get(s.student_id) ?? "Student"} — ${s.session_date}. This removes the record permanently.`,
+      description: `${(s.student_id ? nameOf.get(s.student_id) : null) ?? s.student_name ?? "Student"} — ${s.session_date}. This removes the record permanently.`,
       onConfirm: () => run(() => deletePrivateSession(s.id), "Session deleted"),
     });
   }
@@ -391,6 +394,7 @@ export default function PrivateSessionsPanel({ students, sessions, exemptIds, mo
                       </td>
                       <td className="px-4 py-3">
                         <p className="font-semibold text-foreground">{r.name}</p>
+                        {!r.isFormer && (
                         <button
                           type="button"
                           disabled={isPending}
@@ -410,6 +414,7 @@ export default function PrivateSessionsPanel({ students, sessions, exemptIds, mo
                           {isPrivateOnly ? <UserCheck className="w-3 h-3" /> : <Users className="w-3 h-3" />}
                           {isPrivateOnly ? "Private only" : "Group + Private"}
                         </button>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                         <span className="font-semibold text-foreground">{r.total}</span> total ·{" "}
@@ -424,7 +429,7 @@ export default function PrivateSessionsPanel({ students, sessions, exemptIds, mo
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-2">
-                          {r.unpaidCount > 0 && (
+                          {r.unpaidCount > 0 && !r.isFormer && (
                             <>
                               <button
                                 type="button"

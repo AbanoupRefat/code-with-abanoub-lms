@@ -37,6 +37,8 @@ export default function OneTimeFeesPanel({ students, payments, month, year, avai
   const [note, setNote] = useState("");
 
   const nameOf = new Map(students.map((s) => [s.id, s.full_name || "Unknown"]));
+  const displayName = (p: OneTimePayment) =>
+    p.student_id ? nameOf.get(p.student_id) ?? p.student_name ?? "Unknown" : `${p.student_name ?? "Unknown"} (former)`;
 
   const inPeriod = payments
     .filter((p) => {
@@ -76,7 +78,7 @@ export default function OneTimeFeesPanel({ students, payments, month, year, avai
     confirmToast({
       id: `confirm-del-fee-${p.id}`,
       title: `Delete this ${formatEgp(p.amount)} ${FEE_LABELS[p.fee_type].toLowerCase()} fee?`,
-      description: `${nameOf.get(p.student_id) ?? "Student"} — this removes the record permanently.`,
+      description: `${displayName(p)} — this removes the record permanently.`,
       onConfirm: () =>
         startTransition(async () => {
           const result = await deleteOneTimePayment(p.id);
@@ -239,7 +241,7 @@ export default function OneTimeFeesPanel({ students, payments, month, year, avai
                   <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                     {new Date(p.paid_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                   </td>
-                  <td className="px-4 py-3 font-medium text-foreground">{nameOf.get(p.student_id) ?? "Unknown"}</td>
+                  <td className="px-4 py-3 font-medium text-foreground">{displayName(p)}</td>
                   <td className="px-4 py-3">
                     <span
                       className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full"

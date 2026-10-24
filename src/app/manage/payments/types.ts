@@ -2,7 +2,8 @@ export type FeeType = "notes" | "printing" | "other";
 
 export interface OneTimePayment {
   id: string;
-  student_id: string;
+  student_id: string | null;
+  student_name?: string | null;
   fee_type: FeeType;
   amount: number;
   payment_method: string | null;
@@ -12,7 +13,8 @@ export interface OneTimePayment {
 
 export interface PrivateSession {
   id: string;
-  student_id: string;
+  student_id: string | null;
+  student_name?: string | null;
   session_date: string;
   price: number;
   status: "paid" | "unpaid";
