@@ -54,6 +54,8 @@ export default function PaymentsHub({
   const [month, setMonth] = useState(currentMonth);
   const [year, setYear] = useState(currentYear);
   const [scope, setScope] = useState<Scope>("period");
+  // Which income streams count toward Total net and the pie charts
+  const [inc, setInc] = useState({ tuition: true, notes: true, printing: true, other: true, private: true });
   const [breakdownId, setBreakdownId] = useState("");
   const [isMoving, startMove] = useTransition();
   const [typeFilter, setTypeFilter] = useState<"all" | "monthly" | "both" | "private">("all");
@@ -87,7 +89,7 @@ export default function PaymentsHub({
     if (p.status === "paid" && inScope(p.month, p.year)) {
       const amt = Number(p.amount) || 0;
       tuition += amt;
-      addTo(methodTotals, p.payment_method || "Unspecified", amt);
+      if (inc.tuition) addTo(methodTotals, p.payment_method || "Unspecified", amt);
     }
   });
 
@@ -97,7 +99,7 @@ export default function PaymentsHub({
     if (my && inScope(my.month, my.year)) {
       const amt = Number(p.amount) || 0;
       fees[p.fee_type] += amt;
-      addTo(methodTotals, p.payment_method || "Unspecified", amt);
+      if (inc[p.fee_type]) addTo(methodTotals, p.payment_method || "Unspecified", amt);
     }
   });
   const feesTotal = fees.notes + fees.printing + fees.other;
@@ -110,15 +112,23 @@ export default function PaymentsHub({
       if (my && inScope(my.month, my.year)) {
         const amt = Number(s.price) || 0;
         privateIncome += amt;
-        addTo(methodTotals, s.payment_method || "Unspecified", amt);
+        if (inc.private) addTo(methodTotals, s.payment_method || "Unspecified", amt);
       }
     } else {
       privateOutstanding += Number(s.price) || 0;
     }
   });
 
-  const totalNet = tuition + feesTotal + privateIncome;
-  const groupIncome = tuition + feesTotal;
+  const shown = {
+    tuition: inc.tuition ? tuition : 0,
+    notes: inc.notes ? fees.notes : 0,
+    printing: inc.printing ? fees.printing : 0,
+    other: inc.other ? fees.other : 0,
+    private: inc.private ? privateIncome : 0,
+  };
+  const totalNet = shown.tuition + shown.notes + shown.printing + shown.other + shown.private;
+  const groupIncome = shown.tuition + shown.notes + shown.printing + shown.other;
+  const anyExcluded = Object.values(inc).some((v) => !v);
 
   // ── Monthly tuition status for the selected month (students tracked monthly) ──
   const statusCounts = { paid: 0, pending: 0, unpaid: 0 };
@@ -133,11 +143,11 @@ export default function PaymentsHub({
 
   // ── Pie data ───────────────────────────────────────────────
   const sourcePie: PieSlice[] = [
-    { name: "Monthly tuition", value: tuition, color: COLORS.tuition },
-    { name: FEE_LABELS.notes, value: fees.notes, color: COLORS.notes },
-    { name: FEE_LABELS.printing, value: fees.printing, color: COLORS.printing },
-    { name: "Other fees", value: fees.other, color: COLORS.other },
-    { name: "Private sessions", value: privateIncome, color: COLORS.private },
+    { name: "Monthly tuition", value: shown.tuition, color: COLORS.tuition },
+    { name: FEE_LABELS.notes, value: shown.notes, color: COLORS.notes },
+    { name: FEE_LABELS.printing, value: shown.printing, color: COLORS.printing },
+    { name: "Other fees", value: shown.other, color: COLORS.other },
+    { name: "Private sessions", value: shown.private, color: COLORS.private },
   ];
 
   let paletteIdx = 0;
@@ -158,7 +168,7 @@ export default function PaymentsHub({
 
   const groupVsPrivatePie: PieSlice[] = [
     { name: "Group (tuition + fees)", value: groupIncome, color: COLORS.tuition },
-    { name: "Private sessions", value: privateIncome, color: COLORS.private },
+    { name: "Private sessions", value: shown.private, color: COLORS.private },
   ];
 
   // ── Per-student breakdown (all time): every money stream kept separate ──
@@ -336,9 +346,44 @@ export default function PaymentsHub({
             </div>
           </div>
 
+          {/* Include / exclude income streams */}
+          <div className="clean-panel rounded-xl p-4 shadow-sm">
+            <p className="text-xs font-bold text-muted-foreground uppercase mb-3">Include in total &amp; charts</p>
+            <div className="flex flex-wrap gap-x-5 gap-y-3">
+              {([
+                ["tuition", "Monthly tuition", COLORS.tuition],
+                ["notes", "Notes", COLORS.notes],
+                ["printing", "Printing", COLORS.printing],
+                ["other", "Other fees", COLORS.other],
+                ["private", "Private sessions", COLORS.private],
+              ] as const).map(([key, label, color]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="switch"
+                  aria-checked={inc[key]}
+                  onClick={() => setInc((prev) => ({ ...prev, [key]: !prev[key] }))}
+                  className="flex items-center gap-2 text-sm text-foreground"
+                >
+                  <span
+                    className="relative inline-block w-9 h-5 rounded-full transition-colors"
+                    style={{ backgroundColor: inc[key] ? color : "#cbd5e1" }}
+                  >
+                    <span
+                      className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${
+                        inc[key] ? "left-[18px]" : "left-0.5"
+                      }`}
+                    />
+                  </span>
+                  <span className={inc[key] ? "font-medium" : "text-muted-foreground line-through"}>{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Totals */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="clean-panel p-5 rounded-xl border-l-4 border-l-emerald-500 shadow-sm">
+            <div className={`clean-panel p-5 rounded-xl border-l-4 border-l-emerald-500 shadow-sm ${inc.tuition ? "" : "opacity-40"}`}>
               <p className="text-xs font-semibold text-muted-foreground uppercase">Monthly tuition</p>
               <p className="text-2xl font-bold text-foreground mt-1">{formatEgp(tuition)}</p>
             </div>
@@ -349,14 +394,16 @@ export default function PaymentsHub({
                 Notes {formatEgp(fees.notes)} · Printing {formatEgp(fees.printing)}
               </p>
             </div>
-            <div className="clean-panel p-5 rounded-xl border-l-4 border-l-violet-500 shadow-sm">
+            <div className={`clean-panel p-5 rounded-xl border-l-4 border-l-violet-500 shadow-sm ${inc.private ? "" : "opacity-40"}`}>
               <p className="text-xs font-semibold text-muted-foreground uppercase">Private sessions</p>
               <p className="text-2xl font-bold text-foreground mt-1">{formatEgp(privateIncome)}</p>
             </div>
             <div className="p-5 rounded-xl bg-primary text-primary-foreground shadow-md">
               <p className="text-xs font-semibold uppercase opacity-80">Total net revenue</p>
               <p className="text-2xl font-bold mt-1">{formatEgp(totalNet)}</p>
-              <p className="text-[11px] opacity-80 mt-1">All money received · {scopeLabel}</p>
+              <p className="text-[11px] opacity-80 mt-1">
+                {anyExcluded ? "Selected streams only" : "All money received"} · {scopeLabel}
+              </p>
             </div>
           </div>
 
