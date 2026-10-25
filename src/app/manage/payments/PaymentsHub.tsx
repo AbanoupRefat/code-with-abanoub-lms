@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
+import { setMonthlyExempt } from "./actions";
 import { Calendar, CreditCard, GraduationCap, PieChart as PieIcon, Receipt, Users, Wallet } from "lucide-react";
 import PaymentsClient, { type PaymentRecord, type StudentProfile } from "./PaymentsClient";
 import OneTimeFeesPanel from "./OneTimeFeesPanel";
@@ -53,9 +55,19 @@ export default function PaymentsHub({
   const [year, setYear] = useState(currentYear);
   const [scope, setScope] = useState<Scope>("period");
   const [breakdownId, setBreakdownId] = useState("");
+  const [isMoving, startMove] = useTransition();
 
   const exempt = new Set(exemptIds);
   const monthlyStudents = students.filter((s) => !exempt.has(s.id));
+  const privateOnlyStudents = students.filter((s) => exempt.has(s.id));
+
+  function moveToMonthly(id: string, name: string | null) {
+    startMove(async () => {
+      const result = await setMonthlyExempt({ studentId: id, exempt: false });
+      if (result.success) toast.success(`${name || "Student"} is back in monthly tuition`);
+      else toast.error(result.error ?? "Could not update", { duration: 8000 });
+    });
+  }
 
   const inScope = (m: number, y: number) => scope === "all" || (m === month && y === year);
 
@@ -385,12 +397,46 @@ export default function PaymentsHub({
       )}
 
       {tab === "monthly" && (
-        <PaymentsClient
-          initialStudents={monthlyStudents}
-          initialPayments={payments}
-          selectedMonth={month}
-          selectedYear={year}
-        />
+        <div className="space-y-6">
+          <PaymentsClient
+            initialStudents={monthlyStudents}
+            initialPayments={payments}
+            selectedMonth={month}
+            selectedYear={year}
+          />
+
+          <div className="clean-panel rounded-xl p-5 shadow-sm">
+            <h3 className="font-bold text-foreground text-sm">Private-only students ({privateOnlyStudents.length})</h3>
+            <p className="text-xs text-muted-foreground mt-0.5 mb-3">
+              These students don’t pay monthly, so they’re left out of the tuition table and stats. They pay per session
+              in the Private sessions tab.
+            </p>
+            {privateOnlyStudents.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                None yet. Use “switch to Private only” under a student’s name above.
+              </p>
+            ) : (
+              <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+                {privateOnlyStudents.map((s) => (
+                  <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{s.full_name || "Unknown"}</p>
+                      <p className="text-xs text-muted-foreground">{s.email || "—"}</p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isMoving}
+                      onClick={() => moveToMonthly(s.id, s.full_name)}
+                      className="px-3 py-1 rounded-md text-xs font-bold bg-muted text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-600 disabled:opacity-60"
+                    >
+                      Move back to monthly
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
       )}
 
       {tab === "fees" && (

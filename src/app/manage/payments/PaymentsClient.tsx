@@ -16,7 +16,7 @@ import {
   Square
 } from "lucide-react";
 import { toast } from "sonner";
-import { updateStudentPaymentStatus, batchUpdateStudentPayments } from "./actions";
+import { updateStudentPaymentStatus, batchUpdateStudentPayments, setMonthlyExempt } from "./actions";
 import { useLang } from "@/components/LangContext";
 import { DEFAULT_PAYMENT_AMOUNT } from "./types";
 
@@ -155,6 +155,18 @@ export default function PaymentsClient({
   };
 
   // Quick pay: mark as paid with the default amount and the chosen method
+  // Switch a student to "private only": they leave the monthly tuition list and stats
+  const handleMakePrivateOnly = (student: StudentProfile) => {
+    startTransition(async () => {
+      const result = await setMonthlyExempt({ studentId: student.id, exempt: true });
+      if (result.success) {
+        toast.success(`${student.full_name || "Student"} is now private only — removed from monthly tuition`);
+      } else {
+        toast.error(result.error ?? "Could not update", { duration: 8000 });
+      }
+    });
+  };
+
   const handleQuickPay = (studentId: string, method: "Cash" | "InstaPay") => {
     startTransition(async () => {
       try {
@@ -446,6 +458,15 @@ export default function PaymentsClient({
                             {student.full_name || "Unknown Student"}
                           </p>
                           <p className="text-xs text-muted-foreground">{student.email || "—"}</p>
+                          <button
+                            type="button"
+                            onClick={() => handleMakePrivateOnly(student)}
+                            disabled={isPending}
+                            title="Click to make this student private only (not paying monthly)"
+                            className="mt-1 text-[11px] font-bold px-2 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-violet-500/10 hover:text-violet-600 hover:border-violet-500/20 transition-colors disabled:opacity-60"
+                          >
+                            Monthly · switch to Private only
+                          </button>
                         </div>
                       </div>
                     </td>
