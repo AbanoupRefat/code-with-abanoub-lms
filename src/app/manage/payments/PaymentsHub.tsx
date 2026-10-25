@@ -56,18 +56,26 @@ export default function PaymentsHub({
   const [scope, setScope] = useState<Scope>("period");
   const [breakdownId, setBreakdownId] = useState("");
   const [isMoving, startMove] = useTransition();
+  const [typeFilter, setTypeFilter] = useState<"all" | "monthly" | "both" | "private">("all");
+  const [studentQuery, setStudentQuery] = useState("");
 
   const exempt = new Set(exemptIds);
   const monthlyStudents = students.filter((s) => !exempt.has(s.id));
   const privateOnlyStudents = students.filter((s) => exempt.has(s.id));
 
-  function moveToMonthly(id: string, name: string | null) {
+  function setBilling(id: string, name: string | null, privateOnly: boolean) {
     startMove(async () => {
-      const result = await setMonthlyExempt({ studentId: id, exempt: false });
-      if (result.success) toast.success(`${name || "Student"} is back in monthly tuition`);
+      const result = await setMonthlyExempt({ studentId: id, exempt: privateOnly });
+      if (result.success) {
+        toast.success(
+          privateOnly ? `${name || "Student"} is now private only` : `${name || "Student"} is back in monthly tuition`
+        );
+      }
       else toast.error(result.error ?? "Could not update", { duration: 8000 });
     });
   }
+
+  const moveToMonthly = (id: string, name: string | null) => setBilling(id, name, false);
 
   const inScope = (m: number, y: number) => scope === "all" || (m === month && y === year);
 
@@ -142,6 +150,7 @@ export default function PaymentsHub({
     }));
 
   const statusPie: PieSlice[] = [
+    { name: "Private only", value: privateOnlyStudents.length, color: COLORS.private },
     { name: "Paid", value: statusCounts.paid, color: COLORS.paid },
     { name: "Pending", value: statusCounts.pending, color: COLORS.pending },
     { name: "Unpaid", value: statusCounts.unpaid, color: COLORS.unpaid },
@@ -175,6 +184,57 @@ export default function PaymentsHub({
     { name: FEE_LABELS.printing, value: sb.printing, color: COLORS.printing },
     { name: "Other fees", value: sb.other, color: COLORS.other },
   ];
+
+  // ── All students table: type + monthly status + private sessions ──
+  const privBy = new Map<string, { total: number; paid: number; owed: number }>();
+  privateSessions.forEach((x) => {
+    if (!x.student_id) return;
+    const cur = privBy.get(x.student_id) ?? { total: 0, paid: 0, owed: 0 };
+    cur.total += 1;
+    if (x.status === "paid") cur.paid += 1;
+    else cur.owed += Number(x.price) || 0;
+    privBy.set(x.student_id, cur);
+  });
+  const paidByStudent = new Map<string, number>();
+  payments.forEach((x) => {
+    if (x.status === "paid") addTo(paidByStudent, x.student_id, Number(x.amount) || 0);
+  });
+  oneTimePayments.forEach((x) => {
+    if (x.student_id) addTo(paidByStudent, x.student_id, Number(x.amount) || 0);
+  });
+  privateSessions.forEach((x) => {
+    if (x.student_id && x.status === "paid") addTo(paidByStudent, x.student_id, Number(x.price) || 0);
+  });
+
+  type StudentType = "monthly" | "both" | "private";
+  const studentRows = students.map((st) => {
+    const priv = privBy.get(st.id);
+    const type: StudentType = exempt.has(st.id) ? "private" : priv ? "both" : "monthly";
+    return {
+      st,
+      type,
+      monthStatus: type === "private" ? null : monthPayments.get(st.id)?.status ?? "unpaid",
+      priv,
+      totalPaid: paidByStudent.get(st.id) ?? 0,
+    };
+  });
+  const typeCounts = {
+    all: studentRows.length,
+    monthly: studentRows.filter((r) => r.type === "monthly").length,
+    both: studentRows.filter((r) => r.type === "both").length,
+    private: studentRows.filter((r) => r.type === "private").length,
+  };
+  const q = studentQuery.trim().toLowerCase();
+  const visibleRows = studentRows.filter(
+    (r) =>
+      (typeFilter === "all" || r.type === typeFilter) &&
+      (!q || r.st.full_name?.toLowerCase().includes(q) || r.st.email?.toLowerCase().includes(q))
+  );
+  const TYPE_BADGE: Record<StudentType, { label: string; cls: string }> = {
+    monthly: { label: "Monthly tuition", cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
+    both: { label: "Group + Private", cls: "bg-sky-500/10 text-sky-600 border-sky-500/20" },
+    private: { label: "Private only", cls: "bg-violet-500/10 text-violet-600 border-violet-500/20" },
+  };
 
   const scopeLabel = scope === "all" ? "All time" : `${MONTH_NAMES[month - 1]} ${year}`;
 
@@ -346,7 +406,7 @@ export default function PaymentsHub({
             />
             <PaymentPie
               title="Monthly tuition status"
-              subtitle={`${MONTH_NAMES[month - 1]} ${year} · students`}
+              subtitle={`${MONTH_NAMES[month - 1]} ${year} · all students`}
               data={statusPie}
               format={(n) => `${n}`}
               centerCaption="Students"
@@ -360,6 +420,120 @@ export default function PaymentsHub({
               centerCaption="Net"
               emptyText="No income recorded for this period"
             />
+          </div>
+
+          {/* Every student, whatever their type */}
+          <div className="clean-panel rounded-xl shadow-sm overflow-hidden">
+            <div className="p-5 space-y-3 border-b border-border">
+              <div>
+                <h3 className="font-bold text-foreground">All students ({studentRows.length})</h3>
+                <p className="text-xs text-muted-foreground">
+                  Type, {MONTH_NAMES[month - 1]} tuition status and private sessions. Click a type badge to change it.
+                </p>
+              </div>
+              <input
+                type="text"
+                value={studentQuery}
+                onChange={(e) => setStudentQuery(e.target.value)}
+                placeholder="Search student…"
+                className="w-full md:max-w-sm px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <div className="flex flex-wrap gap-2">
+                {([
+                  ["all", "All"],
+                  ["monthly", "Monthly"],
+                  ["both", "Group + Private"],
+                  ["private", "Private only"],
+                ] as const).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setTypeFilter(id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                      typeFilter === id
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground border-border hover:border-primary"
+                    }`}
+                  >
+                    {label} ({typeCounts[id]})
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead className="bg-muted/40 border-b border-border">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold text-muted-foreground">Student</th>
+                    <th className="px-4 py-3 font-semibold text-muted-foreground">Type</th>
+                    <th className="px-4 py-3 font-semibold text-muted-foreground">{MONTH_NAMES[month - 1]} tuition</th>
+                    <th className="px-4 py-3 font-semibold text-muted-foreground">Private sessions</th>
+                    <th className="px-4 py-3 font-semibold text-muted-foreground">Total paid</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border bg-card">
+                  {visibleRows.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
+                        No students match.
+                      </td>
+                    </tr>
+                  )}
+                  {visibleRows.map((r) => (
+                    <tr key={r.st.id} className="hover:bg-muted/30">
+                      <td className="px-4 py-3">
+                        <p className="font-semibold text-foreground">{r.st.full_name || "Unknown"}</p>
+                        <p className="text-xs text-muted-foreground">{r.st.email || "—"}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          disabled={isMoving}
+                          onClick={() => setBilling(r.st.id, r.st.full_name, r.type !== "private")}
+                          title={r.type === "private" ? "Click to move back to monthly tuition" : "Click to make private only"}
+                          className={`text-[11px] font-bold px-2.5 py-1 rounded-full border whitespace-nowrap disabled:opacity-60 ${TYPE_BADGE[r.type].cls}`}
+                        >
+                          {TYPE_BADGE[r.type].label}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3">
+                        {r.monthStatus === null ? (
+                          <span className="text-xs text-muted-foreground">Not tracked (private only)</span>
+                        ) : (
+                          <span
+                            className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                              r.monthStatus === "paid"
+                                ? "bg-emerald-500/10 text-emerald-600"
+                                : r.monthStatus === "pending"
+                                ? "bg-amber-500/10 text-amber-600"
+                                : "bg-rose-500/10 text-rose-600"
+                            }`}
+                          >
+                            {r.monthStatus === "paid" ? "Paid" : r.monthStatus === "pending" ? "Pending" : "Unpaid"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-xs whitespace-nowrap">
+                        {r.priv ? (
+                          <>
+                            <span className="font-semibold text-foreground">{r.priv.total}</span> sessions ·{" "}
+                            <span className="text-emerald-600 font-semibold">{r.priv.paid}</span> paid
+                            {r.priv.owed > 0 && (
+                              <span className="text-rose-600 font-semibold"> · {formatEgp(r.priv.owed)} owed</span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-mono font-semibold text-foreground whitespace-nowrap">
+                        {formatEgp(r.totalPaid)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* One student, every stream separate */}
