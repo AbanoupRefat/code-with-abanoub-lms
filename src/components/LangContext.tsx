@@ -20,6 +20,7 @@ const translations: Record<string, Record<Lang, string>> = {
   "nav.courses": { en: "Courses", ar: "الدورات" },
   "nav.lessons": { en: "Lessons", ar: "الدروس" },
   "nav.grading": { en: "Grading", ar: "التصحيح" },
+  "nav.homework": { en: "Homework", ar: "الواجبات" },
   "nav.analytics": { en: "Analytics", ar: "التحليلات" },
   "nav.exit": { en: "Exit Admin", ar: "الخروج من الإدارة" },
 
