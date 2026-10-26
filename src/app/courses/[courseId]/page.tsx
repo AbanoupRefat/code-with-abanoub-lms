@@ -34,17 +34,6 @@ function getEmbedUrl(raw: string): string {
   return url;
 }
 
-function getDriveViewUrl(raw: string): string | null {
-  try {
-    const u = new URL((raw || "").trim());
-    if (u.hostname !== "drive.google.com") return null;
-    const id = u.pathname.match(/\/file\/d\/([^/]+)/)?.[1] || u.searchParams.get("id");
-    return id ? `https://drive.google.com/file/d/${id}/view` : null;
-  } catch {
-    return null;
-  }
-}
-
 export default async function CoursePlayerPage(props: { 
   params: Promise<{ courseId: string }>,
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
@@ -222,22 +211,6 @@ export default async function CoursePlayerPage(props: {
                   <p className="text-white/50">{activeLesson ? 'No video provided' : 'No lessons available'}</p>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Drive videos need third-party cookies; iPhone browsers block them by default.
-              Give students a one-tap way to watch the video directly instead. */}
-          {!searchParams.quizId && !activeLesson?.isLocked && activeLesson?.video_url && getDriveViewUrl(activeLesson.video_url) && (
-            <div className="px-4 py-2.5 bg-card border-b border-border flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-              <span>Video shows a cookie or “storage access” message? Tap Allow, or open it directly.</span>
-              <a
-                href={getDriveViewUrl(activeLesson.video_url)!}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-bold whitespace-nowrap hover:opacity-90"
-              >
-                Open video
-              </a>
             </div>
           )}
 
